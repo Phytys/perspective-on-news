@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Balanced News</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<header>
+  <h1>Balanced&nbsp;News</h1>
+  <p class="tagline">See the headline — and the whole story.</p>
+</header>
+
+<main>
+{% for art in articles %}
+  <article class="card">
+    <h2>{{ art.title }}</h2>
+    {% if art.summary %}<p>{{ art.summary }}</p>{% endif %}
+    <p><a href="{{ art.url }}" target="_blank" rel="noopener">Läs hos {{ art.site.title() }}</a></p>
+
+    {% if art.balanced_title %}
+      <hr>
+      <h3>Balanced version</h3>
+      <h4>{{ art.balanced_title }}</h4>
+      <p>{{ art.balanced_summary }}</p>
+      <p class="bias">
+        Bias <strong>{{ "%.2f"|format(art.bias_score or 0) }}</strong>
+        ({{ art.bias_label }}) – {{ art.bias_explanation }}
+      </p>
+    {% else %}
+      <button class="check" data-id="{{ art.id }}">Check balance</button>
+    {% endif %}
+  </article>
+{% endfor %}
+</main>
+
+<footer>
+  <small>Updated {{ now.strftime("%Y-%m-%d %H:%M UTC") }} · Prototype</small>
+</footer>
+
+<script>
+document.addEventListener('click', async e => {
+  if (!e.target.matches('button.check')) return;
+  const btn = e.target, id = btn.dataset.id;
+  btn.disabled = true; btn.textContent = '…';
+  const r = await fetch(`/api/analyse/${id}`, {method: 'POST'});
+  if (!r.ok) { btn.textContent = 'error'; return; }
+  const j = await r.json();
+  if (j.status !== 'ok' && j.status !== 'cached') { btn.textContent='error'; return; }
+  const card = btn.closest('.card');
+  btn.remove();
+  card.insertAdjacentHTML('beforeend', `
+    <hr><h3>Balanced version</h3>
+    <h4>${j.balanced_title}</h4>
+    <p>${j.balanced_summary}</p>
+    <p class="bias">Bias <b>${(+j.bias_score).toFixed(2)}</b>
+      (${j.bias_label}) – ${j.bias_explanation}</p>`);
+});
+</script>
+</body>
+</html>

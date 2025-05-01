@@ -1,0 +1,7 @@
+flask
+feedparser
+beautifulsoup4
+requests
+python-dotenv
+SQLAlchemy
+openai>=1.2.0      # needs the new OpenAI client class
