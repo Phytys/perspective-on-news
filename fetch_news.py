@@ -8,12 +8,13 @@ import argparse, json, logging, os, random, sys, time
 from datetime import datetime
 from typing import Dict, List
 
-import feedparser, requests
+import re, html, feedparser, requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 from models import Session, Article, init_db
 from analysis import analyse_article
+from sources import SITES
 
 load_dotenv()
 
@@ -25,21 +26,6 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-# --- news sources ------------------------------------------------------------
-SITES: Dict[str, Dict[str, str]] = {
-    "svt": {
-        "rss":  "https://www.svt.se/nyheter/rss.xml",
-        "html": "https://www.svt.se/nyheter/",
-    },
-    "aftonbladet": {
-        "rss":  "https://rss.aftonbladet.se/rss2/small/pages/sections/senastenytt/",
-        "html": "https://www.aftonbladet.se/nyheter/",
-    },
-    "expressen": {
-        "rss":  "https://feeds.expressen.se/nyheter/",
-        "html": "https://www.expressen.se/",
-    },
-}
 
 UA = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
@@ -52,26 +38,60 @@ def truncate_words(txt: str, n: int) -> str:
     return " ".join(words[:n]) + ("…" if len(words) > n else "")
 
 # -----------------------------------------------------------------------------
-def rss_top(site: str, n: int, news_len: int) -> List[Dict]:
-    feed = feedparser.parse(SITES[site]["rss"])
-    if feed.bozo:
+CTRL_RE   = re.compile(rb"[\x00-\x08\x0b\x0c\x0e-\x1f]")              # illegal control chars
+BAD_AMPER = re.compile(r"&(?!(?:[a-zA-Z]+|#\d+|#x[0-9a-fA-F]+);)")    # naked “&” breaks XML
+
+def rss_top(site: str, n: int, news_len: int) -> list[dict]:
+    """
+    Download & sanitise RSS, then return [{title, summary, url}, …] (≤ n).
+    Handles:
+      • stray control bytes
+      • undefined entities (&nbsp;/&aring;…)
+      • naked “&” inside text or attributes
+    Works even when feedparser sets bozo=True, as long as entries[] exist.
+    """
+    url = SITES[site]["rss"]
+    raw = requests.get(url, timeout=10).content
+
+    # 1) strip control bytes
+    tmp = CTRL_RE.sub(b"", raw)
+
+    # 2) decode → fix entities → re‑encode
+    xml_str   = tmp.decode("utf-8", errors="ignore")
+    xml_str   = BAD_AMPER.sub("&amp;", xml_str)          # fix naked &
+    xml_str   = html.unescape(xml_str)                   # turn &aring; → å
+    cleaned   = xml_str.encode("utf-8")
+
+    # 3) parse
+    feed = feedparser.parse(cleaned)
+    if feed.bozo and not feed.entries:
         raise RuntimeError(feed.bozo_exception)
-    return [
-        {
-            "title": entry.title,
-            "summary": truncate_words(
-                BeautifulSoup(entry.get("summary", ""), "html.parser").get_text(" ", strip=True),
-                news_len,
-            ),
-            "url": entry.link,
-        }
-        for entry in feed.entries[:n]
-    ]
+
+    # 4) build list
+    items = []
+    for entry in feed.entries[:n]:
+        items.append(
+            {
+                "title": entry.get("title", "").strip(),
+                "summary": truncate_words(
+                    BeautifulSoup(entry.get("summary", ""), "html.parser")
+                    .get_text(" ", strip=True),
+                    news_len,
+                ),
+                "url": entry.get("link"),
+            }
+        )
+    return items
 
 
 def html_top(site: str, n: int, news_len: int) -> List[Dict]:
+    """
+    Fallback scraping for sites whose front page is server‑rendered.
+    Nyheter24 and Omni are React → we use site‑specific selectors.
+    """
+    url = SITES[site]["html"]
     r = requests.get(
-        SITES[site]["html"],
+        url,
         headers={
             "User-Agent": random.choice(UA),
             "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.5",
@@ -80,24 +100,57 @@ def html_top(site: str, n: int, news_len: int) -> List[Dict]:
     )
     r.raise_for_status()
     soup = BeautifulSoup(r.text, "html.parser")
-    items = []
-    for art in soup.find_all("article"):
-        if len(items) >= n:
-            break
-        h = art.find(["h2", "h3"])
-        if not h:
-            continue
-        items.append(
-            {
-                "title": h.get_text(strip=True),
-                "summary": "",                     # plain front pages often lack summary
-                "url": h.find("a")["href"] if h.find("a") else SITES[site]["html"],
-            }
-        )
-    # truncate summary if set later
-    for it in items:
-        it["summary"] = truncate_words(it["summary"], news_len)
-    return items
+    stories = []
+
+    if site == "nyheter24":
+        for h in soup.select("h3.n24-article-card__title")[:n]:
+            stories.append(
+                {
+                    "title": h.get_text(strip=True),
+                    "summary": "",
+                    "url": h.find_parent("a")["href"],         # already absolute
+                }
+            )
+
+    elif site == "omni":
+        for a in soup.select("a.card__title")[:n]:
+            stories.append(
+                {
+                    "title": a.get_text(strip=True),
+                    "summary": "",
+                    "url": "https://www.omni.se" + a["href"],  # prepend domain
+                }
+            )
+
+    elif site == "dagens":
+        for a in soup.select("a.front__article-link")[:n]:
+                stories.append(
+                    {
+                        "title": a.get_text(strip=True),
+                        "summary": "",
+                        "url": "https://dagens.se" + a["href"],   # ← absolute
+                    }
+                )
+
+    else:  # generic <article><h2> fallback
+        for art in soup.find_all("article"):
+            if len(stories) >= n:
+                break
+            h = art.find(["h2", "h3"])
+            if not h:
+                continue
+            stories.append(
+                {
+                    "title": h.get_text(strip=True),
+                    "summary": "",
+                    "url": h.find("a")["href"] if h.find("a") else url,
+                }
+            )
+
+    # Trim words if we filled summary later
+    for s in stories:
+        s["summary"] = truncate_words(s["summary"], news_len)
+    return stories[:n]
 
 
 def collect_news(n: int, news_len: int) -> Dict[str, List[Dict]]:

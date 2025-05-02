@@ -8,15 +8,15 @@
 </head>
 <body>
 <header>
-<nav class="tabs">
-  <a href="/"              class="{{ 'on' if current_site=='all'        else '' }}">Alla</a>
-  <a href="/site/svt"      class="{{ 'on' if current_site=='svt'        else '' }}">SVT</a>
-  <a href="/site/aftonbladet" class="{{ 'on' if current_site=='aftonbladet' else '' }}">Aftonbladet</a>
-  <a href="/site/expressen"   class="{{ 'on' if current_site=='expressen'  else '' }}">Expressen</a>
-  <a href="/analytics"     class="right">Analytics&nbsp;📈</a>
-</nav>
+  <nav class="tabs">
+    <a href="/" class="{{ 'on' if current_site=='all' else '' }}">Alla</a>
+    {% for slug, meta in sites.items() %}
+      <a href="/site/{{ slug }}"
+         class="{{ 'on' if current_site==slug else '' }}">{{ meta.name }}</a>
+    {% endfor %}
+    <a href="/analytics" class="right">Analytics&nbsp;📈</a>
+  </nav>  
   
-
   <h1>Balanced&nbsp;News</h1>
   <p class="tagline">See the headline — and the whole story.</p>
 </header>

@@ -1,14 +1,18 @@
 """
-DB schema (SQLite) + session factory
+DB schema (SQLite/PostgreSQL) + session factory
 """
 from datetime import datetime
+import os
 from sqlalchemy import (
     Column, Integer, String, Text, Float, DateTime,
     create_engine, UniqueConstraint
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DB_URI = "sqlite:///balanced_news.db"
+# Use DATABASE_URL from Heroku, fallback to SQLite for local dev
+DB_URI = os.getenv("DATABASE_URL", "sqlite:///balanced_news.db")
+if DB_URI.startswith("postgres://"):  # Heroku uses postgres:// but SQLAlchemy needs postgresql://
+    DB_URI = DB_URI.replace("postgres://", "postgresql://", 1)
 
 Base = declarative_base()
 engine = create_engine(DB_URI, echo=False, future=True)
@@ -29,12 +33,12 @@ class Article(Base):
     balanced_summary   = Column(Text)
     bias_score         = Column(Float)         # -1 = left … +1 = right
     bias_label         = Column(String(20))
-    bias_explanation   = Column(Text)          # short “why” sentence
+    bias_explanation   = Column(Text)          # short "why" sentence
     openai_tokens      = Column(Integer)       # cost accounting
 
     __table_args__ = (UniqueConstraint("site", "url", name="uix_site_url"),)
 
 
 def init_db() -> None:
-    """Create tables if they don’t exist."""
+    """Create tables if they don't exist."""
     Base.metadata.create_all(engine)

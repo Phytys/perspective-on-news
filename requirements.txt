@@ -5,3 +5,5 @@ requests
 python-dotenv
 SQLAlchemy
 openai>=1.2.0      # needs the new OpenAI client class
+psycopg2-binary    # PostgreSQL adapter
+gunicorn           # production WSGI server
