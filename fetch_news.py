@@ -15,6 +15,9 @@ from dotenv import load_dotenv
 from models import Session, Article, init_db
 from analysis import analyse_article
 from sources import SITES
+from config import (
+    NEWS_PER_SITE, NEWS_SUMMARY_LEN, MAX_WORDS, MAX_TOKENS, ANALYSE_LIMIT
+)
 
 load_dotenv()
 
@@ -152,14 +155,18 @@ def collect_news(n: int, news_len: int) -> Dict[str, List[Dict]]:
 # -----------------------------------------------------------------------------
 def build_cli() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Fetch & optionally analyse Swedish headlines.")
-    p.add_argument("-n", "--per-site",   type=int, default=10,  help="headlines per site")
-    p.add_argument("--news-len",         type=int, default=70,  help="max words kept from feed summary")
-    p.add_argument("--balanced-len",     type=int, default=70,  help="max words GPT may return")
-    p.add_argument("--max-tokens",       type=int, default=600, help="OpenAI max_tokens (cost cap)")
+    p.add_argument("-n", "--per-site",   type=int, default=NEWS_PER_SITE,
+                   help=f"headlines per site (default: {NEWS_PER_SITE})")
+    p.add_argument("--news-len",         type=int, default=NEWS_SUMMARY_LEN,
+                   help=f"max words kept from feed summary (default: {NEWS_SUMMARY_LEN})")
+    p.add_argument("--balanced-len",     type=int, default=MAX_WORDS,
+                   help=f"max words GPT may return (default: {MAX_WORDS})")
+    p.add_argument("--max-tokens",       type=int, default=MAX_TOKENS,
+                   help=f"OpenAI max_tokens (default: {MAX_TOKENS})")
     p.add_argument("--analyse", action="store_true",
                    help="call OpenAI right away (otherwise only fetch headlines)")
-    p.add_argument("--analyse-limit", type=int, default=1,
-                   help="max articles to analyse per site (default: 1)")
+    p.add_argument("--analyse-limit", type=int, default=ANALYSE_LIMIT,
+                   help=f"max articles to analyse per site (default: {ANALYSE_LIMIT})")
     return p
 
 # -----------------------------------------------------------------------------

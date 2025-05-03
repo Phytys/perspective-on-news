@@ -2,12 +2,11 @@
 Single place that talks to the OpenAI API.
 Both fetch_news.py (batch) and app.py (lazy button) import this.
 """
-import json, os, time, logging
-from dotenv import load_dotenv
+import json, time, logging
 import openai
+from config import OPENAI_API_KEY, OPENAI_MODEL, MAX_WORDS, MAX_TOKENS
 
-load_dotenv()
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
 log = logging.getLogger("analysis")
 
 _SYSTEM_PROMPT_TEMPLATE = """Du är en erfaren svensk nyhetsanalytiker.
@@ -32,15 +31,15 @@ presentera motbevis, inte genom att direkt säga att de är fel."""
 
 def analyse_article(article: dict,
                     *,
-                    max_words: int = 70,
-                    max_tokens: int = 600,
+                    max_words: int = MAX_WORDS,
+                    max_tokens: int = MAX_TOKENS,
                     model: str | None = None) -> dict:
     """
     article: {"title": "...", "summary": "..."}
     returns dict + key 'tokens' (prompt+completion)
     """
     system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(max_words=max_words)
-    model = model or os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    model = model or OPENAI_MODEL
     tries = 0
     while tries < 3:
         tries += 1

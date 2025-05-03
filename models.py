@@ -8,6 +8,7 @@ from sqlalchemy import (
     create_engine, UniqueConstraint
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
+from config import DATABASE_URL
 
 # Use DATABASE_URL from Heroku, fallback to SQLite for local dev
 DB_URI = os.getenv("DATABASE_URL", "sqlite:///balanced_news.db")
@@ -15,7 +16,7 @@ if DB_URI.startswith("postgres://"):  # Heroku uses postgres:// but SQLAlchemy n
     DB_URI = DB_URI.replace("postgres://", "postgresql://", 1)
 
 Base = declarative_base()
-engine = create_engine(DB_URI, echo=False, future=True)
+engine = create_engine(DATABASE_URL, echo=False, future=True)
 Session = sessionmaker(bind=engine)
 
 
