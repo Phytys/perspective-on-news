@@ -158,6 +158,8 @@ def build_cli() -> argparse.ArgumentParser:
     p.add_argument("--max-tokens",       type=int, default=600, help="OpenAI max_tokens (cost cap)")
     p.add_argument("--analyse", action="store_true",
                    help="call OpenAI right away (otherwise only fetch headlines)")
+    p.add_argument("--analyse-limit", type=int, default=1,
+                   help="max articles to analyse per site (default: 1)")
     return p
 
 # -----------------------------------------------------------------------------
@@ -171,42 +173,68 @@ def main() -> None:
 
     for site, items in news.items():
         pulled += len(items)
+        site_analysed = 0  # Track how many articles we've analyzed for this site
         for art in items:
             # skip duplicates
             if session.query(Article).filter_by(site=site, url=art["url"]).first():
                 continue
 
-            if args.analyse:
+            if args.analyse and site_analysed < args.analyse_limit:
                 analysis = analyse_article(
                     art,
                     max_words=args.balanced_len,
                     max_tokens=args.max_tokens,
                 )
                 analysed += 1
-                tokens   += analysis.get("tokens", 0)
+                site_analysed += 1
+                tokens += analysis.get("tokens", 0)
+                
+                # Store nuanced analysis results
+                now = datetime.utcnow()
+                row = Article(
+                    site=site,
+                    title=art["title"],
+                    summary=art["summary"],
+                    url=art["url"],
+                    fetched_at=now,
+                    # New fields
+                    nuanced_perspective=json.dumps(analysis, ensure_ascii=False),
+                    verified_claims=len(analysis.get("verification", {}).get("verified_claims", [])),
+                    corrected_claims=len(analysis.get("verification", {}).get("corrected_claims", [])),
+                    analysis_sources=json.dumps(analysis.get("sources", []), ensure_ascii=False),
+                    analyzed_at=now,
+                    last_updated_at=now,
+                    # Legacy fields
+                    balanced_title=analysis.get("main_facts", "")[:300],
+                    balanced_summary=analysis.get("context", ""),
+                    bias_score=0,
+                    bias_label="nyanserad",
+                    bias_explanation=analysis.get("perspectives", ""),
+                    openai_tokens=analysis.get("tokens", 0),
+                )
             else:
-                analysis = {
-                    "balanced_title": None,
-                    "balanced_summary": None,
-                    "bias_score": None,
-                    "bias_label": None,
-                    "bias_explanation": None,
-                    "tokens": 0,
-                }
+                row = Article(
+                    site=site,
+                    title=art["title"],
+                    summary=art["summary"],
+                    url=art["url"],
+                    fetched_at=datetime.utcnow(),
+                    # Initialize new fields as None/0
+                    nuanced_perspective=None,
+                    verified_claims=0,
+                    corrected_claims=0,
+                    analysis_sources=None,
+                    analyzed_at=None,
+                    last_updated_at=None,
+                    # Legacy fields
+                    balanced_title=None,
+                    balanced_summary=None,
+                    bias_score=None,
+                    bias_label=None,
+                    bias_explanation=None,
+                    openai_tokens=0,
+                )
 
-            row = Article(
-                site=site,
-                title=art["title"],
-                summary=art["summary"],
-                url=art["url"],
-                fetched_at=datetime.utcnow(),
-                balanced_title   = analysis["balanced_title"],
-                balanced_summary = analysis["balanced_summary"],
-                bias_score       = analysis["bias_score"],
-                bias_label       = analysis["bias_label"],
-                bias_explanation = analysis["bias_explanation"],
-                openai_tokens    = analysis["tokens"],
-            )
             session.add(row)
             session.commit()
             log.debug("Saved: %s | %s", site, art["title"][:60])

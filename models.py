@@ -23,18 +23,26 @@ class Article(Base):
     __tablename__ = "articles"
 
     id          = Column(Integer, primary_key=True)
-    site        = Column(String(20),  nullable=False)      # svt / aftonbladet / expressen
-    title       = Column(String(300), nullable=False)
+    site        = Column(String,  nullable=False)      # svt / aftonbladet / expressen
+    title       = Column(String, nullable=False)
     summary     = Column(Text)
-    url         = Column(String(600), nullable=False)
+    url         = Column(String, nullable=False)
     fetched_at  = Column(DateTime, default=datetime.utcnow)
 
-    balanced_title     = Column(String(300))
+    balanced_title     = Column(String)
     balanced_summary   = Column(Text)
     bias_score         = Column(Float)         # -1 = left … +1 = right
-    bias_label         = Column(String(20))
+    bias_label         = Column(String)
     bias_explanation   = Column(Text)          # short "why" sentence
-    openai_tokens      = Column(Integer)       # cost accounting
+    
+    nuanced_perspective = Column(Text)         # Structured analysis in Swedish
+    verified_claims     = Column(Integer, default=0)      # Count of verified claims
+    corrected_claims    = Column(Integer, default=0)      # Count of corrected claims
+    analysis_sources    = Column(Text)         # JSON array of sources
+    analyzed_at         = Column(DateTime)     # When the analysis was performed
+    last_updated_at     = Column(DateTime)     # When the analysis was last updated
+    
+    openai_tokens      = Column(Integer, default=0)       # cost accounting
 
     __table_args__ = (UniqueConstraint("site", "url", name="uix_site_url"),)
 

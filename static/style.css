@@ -87,3 +87,37 @@ nav.tabs a{
 nav.tabs a.on{background:#0066cc;color:#fff;font-weight:600;}
 nav.tabs a.right{margin-left:auto;}
 @media(max-width:640px){nav.tabs{gap:.2rem;font-size:.9rem;}}
+
+.analysis {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.analysis h4 {
+    margin: 1rem 0 0.5rem;
+    color: #333;
+    font-size: 1.1em;
+}
+
+.analysis h4:first-child {
+    margin-top: 0;
+}
+
+.analysis ul {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.analysis li {
+    margin: 0.25rem 0;
+}
+
+.analysis .meta {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+    color: #666;
+    font-size: 0.9em;
+}

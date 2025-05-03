@@ -9,49 +9,67 @@
 </head>
 <body>
 <header>
-  <h1>Bias by outlet</h1>
-  <p class="tagline">−1 = left … +1 = right · hover a bar to see sample size</p>
+  <h1>Verifiering per källa</h1>
+  <p class="tagline">Antal verifierade och korrigerade påståenden</p>
 </header>
 
 <main style="max-width:900px;margin:0 auto;padding:0 1rem 4rem;">
-  <canvas id="biasChart" height="280" style="display:none;"></canvas>
-  <p id="nodata" style="text-align:center;color:#666;margin:4rem 0;">No bias data yet. 
-     Analyse at least one article to populate the chart.</p>
+  <canvas id="verificationChart" height="280" style="display:none;"></canvas>
+  <p id="nodata" style="text-align:center;color:#666;margin:4rem 0;">Ingen verifieringsdata än. 
+     Analysera minst en artikel för att se diagrammet.</p>
 
-  <h2 style="margin-top:3rem;">Reset demo data</h2>
-  <button id="resetBtn">Reset stored bias scores</button>
+  <h2 style="margin-top:3rem;">Återställ demo data</h2>
+  <button id="resetBtn">Återställ lagrad data</button>
 </main>
 
 <footer>
-  <small>Updated {{ now.strftime("%Y-%m-%d %H:%M UTC") }}</small>
+  <small>Uppdaterad {{ now.strftime("%Y-%m-%d %H:%M UTC") }}</small>
 </footer>
 
 <!-- JSON payload rendered by Flask -->
-<script id="bias-data" type="application/json">{{ bias_data|tojson }}</script>
+<script id="verification-data" type="application/json">{{ verification_data|tojson }}</script>
 
 <script>
   // Parse the payload
-  const payload = JSON.parse(document.getElementById('bias-data').textContent);
-  const { labels=[], avgs=[], tips=[] } = payload || {};
+  const payload = JSON.parse(document.getElementById('verification-data').textContent);
+  const { labels=[], verified=[], corrected=[] } = payload || {};
 
   if (labels.length) {
     // we have data – hide message & show chart
     document.getElementById('nodata').style.display = 'none';
-    document.getElementById('biasChart').style.display = 'block';
+    document.getElementById('verificationChart').style.display = 'block';
 
-    new Chart(document.getElementById('biasChart'), {
+    new Chart(document.getElementById('verificationChart'), {
       type: 'bar',
       data: {
         labels,
-        datasets:[{ data: avgs, backgroundColor:'#0066cc' }]
+        datasets:[
+          { 
+            label: 'Verifierade',
+            data: verified,
+            backgroundColor: '#4CAF50'
+          },
+          {
+            label: 'Korrigerade',
+            data: corrected,
+            backgroundColor: '#FFC107'
+          }
+        ]
       },
       options: {
-        scales:{ y:{ min:-1, max:1, grid:{ color:'#ccc'} } },
-        plugins:{
-          legend:{ display:false },
-          tooltip:{ callbacks:{
-            label:(c)=>`${c.parsed.y}  (${tips[c.dataIndex]})`
-          }}
+        scales: { 
+          y: { 
+            beginAtZero: true,
+            grid: { color: '#ccc' }
+          }
+        },
+        plugins: {
+          legend: { display: true },
+          tooltip: {
+            callbacks: {
+              label: (c) => `${c.dataset.label}: ${c.parsed.y}`
+            }
+          }
         }
       }
     });
@@ -59,7 +77,7 @@
 
   // dev-only reset button
   document.getElementById('resetBtn').onclick = async ()=>{
-    if(!confirm('Delete all stored bias data?')) return;
+    if(!confirm('Ta bort all lagrad data?')) return;
     await fetch('/reset-analytics', {method:'POST'});
     location.reload();
   };

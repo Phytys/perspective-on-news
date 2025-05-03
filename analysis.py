@@ -10,10 +10,24 @@ load_dotenv()
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 log = logging.getLogger("analysis")
 
-_SYSTEM_PROMPT_TEMPLATE = """You are a neutral Swedish media analyst.
-For each article (title + summary) return strict JSON with keys:
-balanced_title, balanced_summary (≤{max_words} words),
-bias_score (-1..1), bias_label, bias_explanation (1–2 sentences)."""
+_SYSTEM_PROMPT_TEMPLATE = """Du är en erfaren svensk nyhetsanalytiker.
+För varje artikel (rubrik + sammanfattning) returnera strikt JSON med följande struktur:
+
+{{
+    "main_facts": "Huvudfakta och påståenden från artikeln",
+    "context": "Kort bakgrund och historisk kontext",
+    "perspectives": "Olika perspektiv och synvinklar",
+    "implications": "Konsekvenser och påverkan",
+    "verification": {{
+        "verified_claims": ["Lista av verifierade påståenden"],
+        "corrected_claims": ["Lista av korrigerade påståenden med motbevis"]
+    }},
+    "sources": ["Källor för verifiering och kontext"]
+}}
+
+Håll varje sektion koncis (max {max_words} ord). Fokusera på att ge en nyanserad bild
+som hjälper läsaren förstå hela sammanhanget. Korrigera felaktiga påståenden genom att
+presentera motbevis, inte genom att direkt säga att de är fel."""
 
 
 def analyse_article(article: dict,
@@ -50,10 +64,14 @@ def analyse_article(article: dict,
 
     # all retries failed → return empty shell
     return {
-        "balanced_title": None,
-        "balanced_summary": None,
-        "bias_score": None,
-        "bias_label": None,
-        "bias_explanation": None,
+        "main_facts": None,
+        "context": None,
+        "perspectives": None,
+        "implications": None,
+        "verification": {
+            "verified_claims": [],
+            "corrected_claims": []
+        },
+        "sources": [],
         "tokens": 0,
     }

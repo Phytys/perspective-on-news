@@ -18,7 +18,7 @@
   </nav>  
   
   <h1>Balanced&nbsp;News</h1>
-  <p class="tagline">See the headline — and the whole story.</p>
+  <p class="tagline">Se nyheten — och hela sammanhanget.</p>
 </header>
 
 <main>
@@ -28,24 +28,66 @@
     {% if art.summary %}<p>{{ art.summary }}</p>{% endif %}
     <p><a href="{{ art.url }}" target="_blank" rel="noopener">Läs hos {{ art.site.title() }}</a></p>
 
-    {% if art.balanced_title %}
+    {% if art.nuanced_perspective %}
       <hr>
-      <h3>Balanced version</h3>
-      <h4>{{ art.balanced_title }}</h4>
-      <p>{{ art.balanced_summary }}</p>
-      <p class="bias">
-        Bias <strong>{{ "%.2f"|format(art.bias_score or 0) }}</strong>
-        ({{ art.bias_label }}) – {{ art.bias_explanation }}
-      </p>
+      <h3>Nyanserad bild</h3>
+      {% set analysis = art.nuanced_perspective|from_json %}
+      <div class="analysis">
+        <h4>Huvudfakta</h4>
+        <p>{{ analysis.main_facts }}</p>
+        
+        <h4>Bakgrund</h4>
+        <p>{{ analysis.context }}</p>
+        
+        <h4>Perspektiv</h4>
+        <p>{{ analysis.perspectives }}</p>
+        
+        <h4>Konsekvenser</h4>
+        <p>{{ analysis.implications }}</p>
+        
+        {% if analysis.verification.verified_claims %}
+        <h4>Verifierade påståenden</h4>
+        <ul>
+          {% for claim in analysis.verification.verified_claims %}
+            <li>{{ claim }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        
+        {% if analysis.verification.corrected_claims %}
+        <h4>Korrigerade påståenden</h4>
+        <ul>
+          {% for claim in analysis.verification.corrected_claims %}
+            <li>{{ claim }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        
+        {% if analysis.sources %}
+        <h4>Källor</h4>
+        <ul>
+          {% for source in analysis.sources %}
+            <li>{{ source }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        
+        <p class="meta">
+          Analyserad: {{ art.analyzed_at.strftime("%Y-%m-%d %H:%M") }} UTC
+          {% if art.last_updated_at != art.analyzed_at %}
+            (Uppdaterad: {{ art.last_updated_at.strftime("%Y-%m-%d %H:%M") }} UTC)
+          {% endif %}
+        </p>
+      </div>
     {% else %}
-      <button class="check" data-id="{{ art.id }}">Check balance</button>
+      <button class="check" data-id="{{ art.id }}">Få nyanserad bild</button>
     {% endif %}
   </article>
 {% endfor %}
 </main>
 
 <footer>
-  <small>Updated {{ now.strftime("%Y-%m-%d %H:%M UTC") }} · Prototype</small>
+  <small>Uppdaterad {{ now.strftime("%Y-%m-%d %H:%M UTC") }} · Prototyp</small>
 </footer>
 
 <script>
@@ -57,14 +99,7 @@ document.addEventListener('click', async e => {
   if (!r.ok) { btn.textContent = 'error'; return; }
   const j = await r.json();
   if (j.status !== 'ok' && j.status !== 'cached') { btn.textContent='error'; return; }
-  const card = btn.closest('.card');
-  btn.remove();
-  card.insertAdjacentHTML('beforeend', `
-    <hr><h3>Balanced version</h3>
-    <h4>${j.balanced_title}</h4>
-    <p>${j.balanced_summary}</p>
-    <p class="bias">Bias <b>${(+j.bias_score).toFixed(2)}</b>
-      (${j.bias_label}) – ${j.bias_explanation}</p>`);
+  location.reload();  // Reload to show new analysis
 });
 </script>
 </body>

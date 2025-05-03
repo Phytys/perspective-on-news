@@ -15,6 +15,11 @@ app = Flask(__name__)
 app.config.from_prefixed_env()
 init_db()
 
+# Add custom Jinja filter
+@app.template_filter('from_json')
+def from_json(value):
+    return json.loads(value)
+
 # ---------- helper ----------------------------------------------------
 def site_exists(slug: str) -> bool:     # central truth
     return slug in SITES
@@ -52,53 +57,69 @@ def index_site(site: str):
 def api_analyse(aid: int):
     sess = Session()
     art = sess.get(Article, aid) or abort(404)
-    if art.balanced_title:
+    now = datetime.utcnow()
+    
+    if art.nuanced_perspective:
         sess.close(); return jsonify({"status":"cached"})
     res = analyse_article({"title":art.title,"summary":art.summary},
                           max_words=70,max_tokens=600)
-    for k,v in (
-        ("balanced_title","balanced_title"),
-        ("balanced_summary","balanced_summary"),
-        ("bias_score","bias_score"),
-        ("bias_label","bias_label"),
-        ("bias_explanation","bias_explanation"),
-    ):
-        setattr(art, k, res[v])
-    art.openai_tokens = res.get("tokens",0)
+    
+    # Update article with new analysis
+    art.nuanced_perspective = json.dumps(res, ensure_ascii=False)
+    art.verified_claims = len(res.get("verification", {}).get("verified_claims", []))
+    art.corrected_claims = len(res.get("verification", {}).get("corrected_claims", []))
+    art.analysis_sources = json.dumps(res.get("sources", []), ensure_ascii=False)
+    art.analyzed_at = now
+    art.last_updated_at = now
+    
+    # Keep old fields for backward compatibility
+    art.balanced_title = res.get("main_facts", "")[:300]  # Truncate to match column size
+    art.balanced_summary = res.get("context", "")
+    art.bias_score = 0  # No longer used but keeping for compatibility
+    art.bias_label = "nyanserad"
+    art.bias_explanation = res.get("perspectives", "")
+    art.openai_tokens = res.get("tokens", 0)
+    
     sess.commit(); sess.close()
-    return jsonify({"status":"ok",**res})
+    return jsonify({"status":"ok", **res})
 
 # ----------------------------------------------------------------------
-# Analytics – average bias per outlet, plus sample size (robust)
+# Analytics – verification metrics per outlet
 # ----------------------------------------------------------------------
 @app.route("/analytics")
 def analytics():
     sess = Session()
     rows = (
-        sess.query(Article.site, Article.bias_score)
-        .filter(Article.bias_score.is_not(None))     # ← avoids NULL warning
+        sess.query(Article.site, Article.verified_claims, Article.corrected_claims)
+        .filter(Article.verified_claims.is_not(None))     # ← avoids NULL warning
         .all()
     )
-    sums, counts = defaultdict(float), defaultdict(int)
-    for site, score in rows:
-        sums[site]   += float(score or 0)
-        counts[site] += 1
+    
+    # Aggregate per site
+    verified = defaultdict(int)
+    corrected = defaultdict(int)
+    for site, v, c in rows:
+        verified[site] += v or 0
+        corrected[site] += c or 0
 
-    labels, avgs, tips = [], [], []
+    labels, v_data, c_data = [], [], []
     for slug, meta in SITES.items():
-        n = counts.get(slug, 0)
-        if n:
+        if verified[slug] or corrected[slug]:
             labels.append(meta["name"])
-            avgs.append(round(sums[slug] / n, 3))
-            tips.append(f"{n} articles")
+            v_data.append(verified[slug])
+            c_data.append(corrected[slug])
 
-    payload = {"labels": labels, "avgs": avgs, "tips": tips}
+    payload = {
+        "labels": labels,
+        "verified": v_data,
+        "corrected": c_data
+    }
     sess.close()
 
     return render_template(
         "analytics.html",
-        bias_data=payload,     # ← hand raw dict to Jinja
-        sites=SITES,           # so nav renders
+        verification_data=payload,  # ← hand raw dict to Jinja
+        sites=SITES,               # so nav renders
         now=datetime.utcnow(),
     )
 
