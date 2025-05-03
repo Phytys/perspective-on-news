@@ -34,6 +34,7 @@
     {% if art.nuanced_perspective %}
       <hr>
       <h3>Nyanserad bild</h3>
+      <p class="analysis-note">Analys baserad på rubrik och sammanfattning</p>
       {% set analysis = art.nuanced_perspective|from_json %}
       <div class="analysis">
         {% if analysis.model_used %}
@@ -148,18 +149,18 @@
 
         {% if art.verified_claims > 0 or art.corrected_claims > 0 %}
         <div class="analysis-section">
-            <h3>Verification Summary</h3>
+            <h3>Verifieringssammanfattning</h3>
             <div class="analysis-content">
                 {% if art.verified_claims > 0 %}
                 <div class="analysis-item">
-                    <h4>Verified Claims</h4>
-                    <p>{{ art.verified_claims }} claims were verified</p>
+                    <h4>Verifierade påståenden</h4>
+                    <p>{{ art.verified_claims }} påståenden verifierades</p>
                 </div>
                 {% endif %}
                 {% if art.corrected_claims > 0 %}
                 <div class="analysis-item">
-                    <h4>Corrected Claims</h4>
-                    <p>{{ art.corrected_claims }} claims were corrected</p>
+                    <h4>Korrigerade påståenden</h4>
+                    <p>{{ art.corrected_claims }} påståenden korrigerades</p>
                 </div>
                 {% endif %}
             </div>
@@ -168,35 +169,35 @@
 
         {% if analysis.bias_analysis %}
         <div class="analysis-section">
-            <h3>Bias Analysis</h3>
+            <h3>Biasanalys</h3>
             <div class="analysis-content">
                 {% if analysis.bias_analysis.political_leaning %}
                 <div class="analysis-item">
-                    <h4>Political Leaning</h4>
+                    <h4>Politiskt perspektiv</h4>
                     <p>{{ analysis.bias_analysis.political_leaning }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.bias_analysis.framing_analysis %}
                 <div class="analysis-item">
-                    <h4>Framing Analysis</h4>
+                    <h4>Raminställning</h4>
                     <p>{{ analysis.bias_analysis.framing_analysis }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.bias_analysis.language_analysis %}
                 <div class="analysis-item">
-                    <h4>Language Analysis</h4>
+                    <h4>Språkanalys</h4>
                     <p>{{ analysis.bias_analysis.language_analysis }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.bias_analysis.source_analysis %}
                 <div class="analysis-item">
-                    <h4>Source Analysis</h4>
+                    <h4>Källanalys</h4>
                     <p>{{ analysis.bias_analysis.source_analysis }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.bias_analysis.omission_analysis %}
                 <div class="analysis-item">
-                    <h4>Omission Analysis</h4>
+                    <h4>Analys av utelämnanden</h4>
                     <p>{{ analysis.bias_analysis.omission_analysis }}</p>
                 </div>
                 {% endif %}
@@ -206,23 +207,23 @@
 
         {% if analysis.balanced_perspective %}
         <div class="analysis-section">
-            <h3>Balanced Perspective</h3>
+            <h3>Balanserat perspektiv</h3>
             <div class="analysis-content">
                 {% if analysis.balanced_perspective.missing_viewpoints %}
                 <div class="analysis-item">
-                    <h4>Missing Viewpoints</h4>
+                    <h4>Saknade synvinklar</h4>
                     <p>{{ analysis.balanced_perspective.missing_viewpoints }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.balanced_perspective.additional_context %}
                 <div class="analysis-item">
-                    <h4>Additional Context</h4>
+                    <h4>Ytterligare kontext</h4>
                     <p>{{ analysis.balanced_perspective.additional_context }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.balanced_perspective.improvement_suggestions %}
                 <div class="analysis-item">
-                    <h4>Improvement Suggestions</h4>
+                    <h4>Förbättringsförslag</h4>
                     <p>{{ analysis.balanced_perspective.improvement_suggestions }}</p>
                 </div>
                 {% endif %}
@@ -232,29 +233,29 @@
 
         {% if analysis.factual_accuracy %}
         <div class="analysis-section">
-            <h3>Factual Accuracy</h3>
+            <h3>Faktakorrekthet</h3>
             <div class="analysis-content">
                 {% if analysis.factual_accuracy.claim_verification %}
                 <div class="analysis-item">
-                    <h4>Claim Verification</h4>
+                    <h4>Verifiering av påståenden</h4>
                     <p>{{ analysis.factual_accuracy.claim_verification }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.factual_accuracy.unsupported_assertions %}
                 <div class="analysis-item">
-                    <h4>Unsupported Assertions</h4>
+                    <h4>Obekräftade påståenden</h4>
                     <p>{{ analysis.factual_accuracy.unsupported_assertions }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.factual_accuracy.logical_fallacies %}
                 <div class="analysis-item">
-                    <h4>Logical Fallacies</h4>
+                    <h4>Logiska felslut</h4>
                     <p>{{ analysis.factual_accuracy.logical_fallacies }}</p>
                 </div>
                 {% endif %}
                 {% if analysis.factual_accuracy.source_credibility %}
                 <div class="analysis-item">
-                    <h4>Source Credibility</h4>
+                    <h4>Källtillförlitlighet</h4>
                     <p>{{ analysis.factual_accuracy.source_credibility }}</p>
                 </div>
                 {% endif %}
@@ -264,52 +265,79 @@
 
         {% if analysis.reporting_quality %}
         <div class="analysis-section">
-            <h3>Reporting Quality</h3>
+            <h3>Rapporteringskvalitet</h3>
             <div class="analysis-content">
                 <div class="quality-scores">
                     {% if analysis.reporting_quality.objectivity_score is not none %}
                     <div class="score-item">
-                        <h4>Objectivity</h4>
+                        <h4>Objektivitet</h4>
                         <div class="score-bar">
                             <div class="score-fill objectivity-score"></div>
                         </div>
-                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.objectivity_score * 100) }}%</span>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.objectivity_score) }}%</span>
                     </div>
                     {% endif %}
                     {% if analysis.reporting_quality.depth_score is not none %}
                     <div class="score-item">
-                        <h4>Depth</h4>
+                        <h4>Djup</h4>
                         <div class="score-bar">
                             <div class="score-fill depth-score"></div>
                         </div>
-                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.depth_score * 100) }}%</span>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.depth_score) }}%</span>
                     </div>
                     {% endif %}
                     {% if analysis.reporting_quality.evidence_score is not none %}
                     <div class="score-item">
-                        <h4>Evidence</h4>
+                        <h4>Bevis</h4>
                         <div class="score-bar">
                             <div class="score-fill evidence-score"></div>
                         </div>
-                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.evidence_score * 100) }}%</span>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.evidence_score) }}%</span>
                     </div>
                     {% endif %}
                     {% if analysis.reporting_quality.clarity_score is not none %}
                     <div class="score-item">
-                        <h4>Clarity</h4>
+                        <h4>Tydlighet</h4>
                         <div class="score-bar">
                             <div class="score-fill clarity-score"></div>
                         </div>
-                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.clarity_score * 100) }}%</span>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.clarity_score) }}%</span>
                     </div>
                     {% endif %}
                 </div>
                 {% if analysis.reporting_quality.overall_quality %}
                 <div class="analysis-item">
-                    <h4>Overall Quality Assessment</h4>
+                    <h4>Övergripande kvalitetsbedömning</h4>
                     <p>{{ analysis.reporting_quality.overall_quality }}</p>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if analysis.dalio_perspective and analysis.dalio_perspective.cycle_analysis %}
+        <div class="analysis-section">
+            <h3>Ray Dalio's Perspektiv</h3>
+            <div class="dalio-perspective">
+                <div class="perspective-item">
+                    <h4>Cykelanalys</h4>
+                    <p>{{ analysis.dalio_perspective.cycle_analysis }}</p>
+                </div>
+                <div class="perspective-item">
+                    <h4>Identifierade Mönster</h4>
+                    <p>{{ analysis.dalio_perspective.pattern_identification }}</p>
+                </div>
+                <div class="perspective-item">
+                    <h4>Långsiktiga Implikationer</h4>
+                    <p>{{ analysis.dalio_perspective.long_term_implications }}</p>
+                </div>
+                <div class="perspective-item">
+                    <h4>Tillämpade Principer</h4>
+                    <p>{{ analysis.dalio_perspective.principles_applied }}</p>
+                </div>
+            </div>
+            <div class="dalio-note">
+                <p>Notera: Detta är inte Ray Dalio's direkta åsikter utan en analys baserad på hans publicerade principer och lära.</p>
             </div>
         </div>
         {% endif %}

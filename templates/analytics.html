@@ -18,14 +18,62 @@
     <a href="/analytics" class="right">Analys&nbsp;📈</a>
   </nav>
 
-  <h1>Verifiering per källa</h1>
-  <p class="tagline">Antal verifierade och korrigerade påståenden</p>
+  <h1>Kvalitetsanalys</h1>
+  <p class="tagline">Översikt av nyhetskvalitet och verifiering per källa</p>
 </header>
 
 <main style="max-width:900px;margin:0 auto;padding:0 1rem 4rem;">
   <canvas id="verificationChart" height="280" style="display:none;"></canvas>
-  <p id="nodata" style="text-align:center;color:#666;margin:4rem 0;">Ingen verifieringsdata än. 
+  <p id="nodata" style="text-align:center;color:#666;margin:4rem 0;">Ingen analysdata tillgänglig än. 
      Analysera minst en artikel för att se diagrammet.</p>
+
+  <div id="metrics" style="display:none;margin-top:2rem;">
+    <h2>Detaljerad analys per källa</h2>
+    <div class="metrics-grid">
+      {% for slug, meta in sites.items() %}
+        {% if slug in verification_data.metrics %}
+        <div class="metric-card" data-site="{{ slug }}">
+          <h3>{{ meta.name }}</h3>
+          <div class="metric-content">
+            <p><strong>Analyserade artiklar:</strong> {{ verification_data.metrics[slug].total_articles }}</p>
+            <p><strong>Verifierade påståenden:</strong> {{ verification_data.metrics[slug].verified }}</p>
+            <p><strong>Korrigerade påståenden:</strong> {{ verification_data.metrics[slug].corrected }}</p>
+            <div class="quality-scores">
+              <div class="score-item">
+                <h4>Objektivitet</h4>
+                <div class="score-bar">
+                  <div class="score-fill objectivity-score"></div>
+                </div>
+                <span class="score-value">{{ verification_data.metrics[slug].avg_objectivity }}%</span>
+              </div>
+              <div class="score-item">
+                <h4>Djup</h4>
+                <div class="score-bar">
+                  <div class="score-fill depth-score"></div>
+                </div>
+                <span class="score-value">{{ verification_data.metrics[slug].avg_depth }}%</span>
+              </div>
+              <div class="score-item">
+                <h4>Bevis</h4>
+                <div class="score-bar">
+                  <div class="score-fill evidence-score"></div>
+                </div>
+                <span class="score-value">{{ verification_data.metrics[slug].avg_evidence }}%</span>
+              </div>
+              <div class="score-item">
+                <h4>Tydlighet</h4>
+                <div class="score-bar">
+                  <div class="score-fill clarity-score"></div>
+                </div>
+                <span class="score-value">{{ verification_data.metrics[slug].avg_clarity }}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
 
   <h2 style="margin-top:3rem;">Återställ data</h2>
   <button id="resetBtn">Återställ all analysdata</button>
@@ -41,12 +89,24 @@
 <script>
   // Parse the payload
   const payload = JSON.parse(document.getElementById('verification-data').textContent);
-  const { labels=[], verified=[], corrected=[] } = payload || {};
+  const { labels=[], verified=[], corrected=[], metrics={} } = payload || {};
 
   if (labels.length) {
-    // we have data – hide message & show chart
+    // we have data – hide message & show charts
     document.getElementById('nodata').style.display = 'none';
     document.getElementById('verificationChart').style.display = 'block';
+    document.getElementById('metrics').style.display = 'block';
+
+    // Set score bar widths using CSS variables
+    Object.entries(metrics).forEach(([slug, data]) => {
+      const card = document.querySelector(`.metric-card[data-site="${slug}"]`);
+      if (card) {
+        card.style.setProperty('--objectivity-score', `${data.avg_objectivity}%`);
+        card.style.setProperty('--depth-score', `${data.avg_depth}%`);
+        card.style.setProperty('--evidence-score', `${data.avg_evidence}%`);
+        card.style.setProperty('--clarity-score', `${data.avg_clarity}%`);
+      }
+    });
 
     new Chart(document.getElementById('verificationChart'), {
       type: 'bar',
@@ -111,5 +171,82 @@
     location.reload();
   };
 </script>
+
+<style>
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.metric-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.metric-card h3 {
+  margin-top: 0;
+  color: #2c3e50;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.metric-content {
+  margin-top: 1rem;
+}
+
+.metric-content p {
+  margin: 0.5rem 0;
+  color: #666;
+}
+
+.metric-content strong {
+  color: #333;
+}
+
+.quality-scores {
+  margin-top: 1.5rem;
+}
+
+.score-item {
+  margin-bottom: 1rem;
+}
+
+.score-item h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.score-bar {
+  height: 8px;
+  background: #eee;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  background: #0066cc;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.objectivity-score { width: var(--objectivity-score, 0%); }
+.depth-score { width: var(--depth-score, 0%); }
+.evidence-score { width: var(--evidence-score, 0%); }
+.clarity-score { width: var(--clarity-score, 0%); }
+
+.score-value {
+  font-size: 0.8rem;
+  color: #666;
+  text-align: right;
+  display: block;
+  margin-top: 0.2rem;
+}
+</style>
 </body>
 </html>

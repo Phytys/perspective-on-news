@@ -375,3 +375,46 @@ nav.tabs a.right{margin-left:auto;}
     font-size: 0.9rem;
     font-weight: 500;
 }
+
+.analysis-note {
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+    margin: -0.5rem 0 1rem;
+}
+
+.dalio-perspective {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+}
+
+.perspective-item {
+    margin-bottom: 1.5rem;
+}
+
+.perspective-item:last-child {
+    margin-bottom: 0;
+}
+
+.perspective-item h4 {
+    color: #2c3e50;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.perspective-item p {
+    color: #34495e;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.dalio-note {
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}

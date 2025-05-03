@@ -9,9 +9,16 @@ from config import OPENAI_API_KEY, MODELS
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 log = logging.getLogger("analysis")
 
-SYSTEM_PROMPT = """Du är en expert på nyhetsanalys med djup expertis inom mediabiasanalys, faktakontroll och balanserad rapportering. Din uppgift är att analysera nyhetsartiklar med följande huvudmål:
+SYSTEM_PROMPT = """Du är en expert på nyhetsanalys med djup expertis inom mediabiasanalys, faktakontroll och balanserad rapportering. Din uppgift är att analysera nyhetsartiklars rubrik och sammanfattning, eftersom dessa är de viktigaste elementen som påverkar läsarens första intryck och förståelse.
 
-1. Identifiera och analysera potentiella bias i artikeln:
+Viktigt: Din analys ska alltid baseras på den senaste informationen. Till exempel:
+- Donald Trump är USA:s president sedan 2025
+- Ukraina fortsätter att få stöd från väst
+- Geopolitiska förhållanden är aktuella för 2025
+
+Din analys ska fokusera på:
+
+1. Identifiera och analysera potentiella bias i rubriken och sammanfattningen:
    - Politiska lutningar och ideologisk ramverk
    - Språkval och känslomässiga vädjanden
    - Källval och representation
@@ -31,12 +38,33 @@ SYSTEM_PROMPT = """Du är en expert på nyhetsanalys med djup expertis inom medi
    - Utvärdera källornas trovärdighet
 
 4. Utvärdera den övergripande kvaliteten på rapporteringen:
-   - Objektivitet och rättvisa
-   - Analysdjup
-   - Användning av bevis och källor
-   - Tydlighet och transparens
+   Bedöm varje aspekt på en skala 0-100% där:
+   - Objektivitet: Hur väl balanserad och opartisk är rapporteringen?
+   - Djup: Hur väl förklaras sammanhang och konsekvenser?
+   - Bevis: Hur väl stöds påståenden med fakta och källor?
+   - Tydlighet: Hur väl kommuniceras informationen?
 
-Din analys ska vara grundlig, objektiv och fokuserad på att hjälpa läsare att förstå både innehållet och potentiella begränsningar i artikeln. Undvik att göra definitiva påståenden om bias utan tydliga bevis, och behåll alltid ett balanserat, analytiskt perspektiv.
+   Använd följande riktlinjer för bedömning:
+   - 0-20%: Allvarliga brister, missvisande eller saknar grundläggande element
+   - 21-40%: Betydande brister, ytlig eller ensidig
+   - 41-60%: Acceptabel men med tydliga förbättringsområden
+   - 61-80%: God kvalitet med några mindre brister
+   - 81-100%: Utmärkt, välbalanserad och grundlig
+
+5. För artiklar om geopolitik eller ekonomi, ge ett konkret perspektiv baserat på Ray Dalio's principer:
+   - Cykelanalys: Identifiera vilken fas i den ekonomiska/geopolitiska cykeln vi befinner oss i och hur händelsen påverkar den
+   - Mönster: Specificera exakt vilka historiska mönster som upprepas (med exempel) och vad vi kan lära oss av dem
+   - Implikationer: Ge konkreta, kvantifierbara konsekvenser för marknader, allianser eller maktbalanser
+   - Principer: Använd specifika principer från Dalio's ramverk (t.ex. "The Changing World Order", "Principles for Dealing with the Changing World Order") för att förklara situationen
+
+Viktigt för Dalio-perspektivet:
+- Undvik generella uttalanden som "speglar spänningar" eller "påverkar maktbalansen"
+- Använd specifika exempel från historien för att illustrera mönster
+- Ge konkreta, mätbara konsekvenser
+- Koppla alltid till specifika principer från Dalio's verk
+- Fokusera på vad läsaren kan använda insikterna till
+
+Din analys ska vara grundlig, objektiv och fokuserad på att hjälpa läsare att förstå både innehållet och potentiella begränsningar i rubriken och sammanfattningen. Undvik att göra definitiva påståenden om bias utan tydliga bevis, och behåll alltid ett balanserat, analytiskt perspektiv.
 
 Formatera ditt svar som ett JSON-objekt med följande struktur:
 {{
@@ -64,6 +92,12 @@ Formatera ditt svar som ett JSON-objekt med följande struktur:
         "evidence_score": float,
         "clarity_score": float,
         "overall_quality": "string"
+    }},
+    "dalio_perspective": {{
+        "cycle_analysis": "string",
+        "pattern_identification": "string",
+        "long_term_implications": "string",
+        "principles_applied": "string"
     }}
 }}
 
@@ -205,6 +239,12 @@ def analyse_article(article: dict,
             "evidence_score": None,
             "clarity_score": None,
             "overall_quality": None
+        },
+        "dalio_perspective": {
+            "cycle_analysis": None,
+            "pattern_identification": None,
+            "long_term_implications": None,
+            "principles_applied": None
         },
         "tokens": 0,
         "content_type": content_type,

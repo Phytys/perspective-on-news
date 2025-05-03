@@ -69,8 +69,16 @@ def api_analyse(aid: int):
     
     # Update article with new analysis
     art.nuanced_perspective = json.dumps(res, ensure_ascii=False)
-    art.verified_claims = len(res.get("verification", {}).get("verified_claims", []))
-    art.corrected_claims = len(res.get("verification", {}).get("corrected_claims", []))
+    
+    # Extract verification data from factual_accuracy
+    factual_accuracy = res.get("factual_accuracy", {})
+    claim_verification = factual_accuracy.get("claim_verification", "")
+    unsupported_assertions = factual_accuracy.get("unsupported_assertions", "")
+    
+    # Count verified and corrected claims
+    art.verified_claims = len([line for line in claim_verification.split('\n') if line.strip()])
+    art.corrected_claims = len([line for line in unsupported_assertions.split('\n') if line.strip()])
+    
     art.analysis_sources = json.dumps(res.get("sources", []), ensure_ascii=False)
     art.analyzed_at = now
     art.last_updated_at = now
@@ -93,36 +101,75 @@ def api_analyse(aid: int):
 def analytics():
     sess = Session()
     rows = (
-        sess.query(Article.site, Article.verified_claims, Article.corrected_claims)
-        .filter(Article.verified_claims.is_not(None))     # ← avoids NULL warning
+        sess.query(
+            Article.site,
+            Article.verified_claims,
+            Article.corrected_claims,
+            Article.nuanced_perspective,
+            Article.analyzed_at
+        )
+        .filter(Article.nuanced_perspective.is_not(None))
         .all()
     )
     
     # Aggregate per site
-    verified = defaultdict(int)
-    corrected = defaultdict(int)
-    for site, v, c in rows:
-        verified[site] += v or 0
-        corrected[site] += c or 0
+    metrics = defaultdict(lambda: {
+        "verified": 0,
+        "corrected": 0,
+        "total_articles": 0,
+        "avg_objectivity": 0,
+        "avg_depth": 0,
+        "avg_evidence": 0,
+        "avg_clarity": 0
+    })
+    
+    for site, v, c, analysis_json, analyzed_at in rows:
+        metrics[site]["verified"] += v or 0
+        metrics[site]["corrected"] += c or 0
+        metrics[site]["total_articles"] += 1
+        
+        # Parse analysis JSON to get quality scores
+        try:
+            analysis = json.loads(analysis_json)
+            quality = analysis.get("reporting_quality", {})
+            if quality:
+                metrics[site]["avg_objectivity"] += quality.get("objectivity_score", 0) or 0
+                metrics[site]["avg_depth"] += quality.get("depth_score", 0) or 0
+                metrics[site]["avg_evidence"] += quality.get("evidence_score", 0) or 0
+                metrics[site]["avg_clarity"] += quality.get("clarity_score", 0) or 0
+        except (json.JSONDecodeError, TypeError):
+            continue
 
+    # Calculate averages
+    for site in metrics:
+        total = metrics[site]["total_articles"]
+        if total > 0:
+            # Scores are already in 0-1 range, just convert to percentage
+            metrics[site]["avg_objectivity"] = min(100, max(0, round(metrics[site]["avg_objectivity"] / total, 1)))
+            metrics[site]["avg_depth"] = min(100, max(0, round(metrics[site]["avg_depth"] / total, 1)))
+            metrics[site]["avg_evidence"] = min(100, max(0, round(metrics[site]["avg_evidence"] / total, 1)))
+            metrics[site]["avg_clarity"] = min(100, max(0, round(metrics[site]["avg_clarity"] / total, 1)))
+
+    # Prepare data for chart
     labels, v_data, c_data = [], [], []
     for slug, meta in SITES.items():
-        if verified[slug] or corrected[slug]:
+        if slug in metrics:
             labels.append(meta["name"])
-            v_data.append(verified[slug])
-            c_data.append(corrected[slug])
+            v_data.append(metrics[slug]["verified"])
+            c_data.append(metrics[slug]["corrected"])
 
     payload = {
         "labels": labels,
         "verified": v_data,
-        "corrected": c_data
+        "corrected": c_data,
+        "metrics": {site: data for site, data in metrics.items()}
     }
     sess.close()
 
     return render_template(
         "analytics.html",
-        verification_data=payload,  # ← hand raw dict to Jinja
-        sites=SITES,               # so nav renders
+        verification_data=payload,
+        sites=SITES,
         now=datetime.utcnow(),
     )
 
