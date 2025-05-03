@@ -2,13 +2,12 @@
 from datetime import datetime
 import json
 from collections import defaultdict
-
 from flask import Flask, render_template, jsonify, abort
 from dotenv import load_dotenv
-
 from models   import Session, Article, init_db
 from analysis import analyse_article
 from sources  import SITES           # ← dynamic registry
+from config   import MODELS
 
 load_dotenv()
 app = Flask(__name__)
@@ -18,7 +17,12 @@ init_db()
 # Add custom Jinja filter
 @app.template_filter('from_json')
 def from_json(value):
-    return json.loads(value)
+    if not value:
+        return {}
+    try:
+        return json.loads(value)
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 # ---------- helper ----------------------------------------------------
 def site_exists(slug: str) -> bool:     # central truth
@@ -61,8 +65,7 @@ def api_analyse(aid: int):
     
     if art.nuanced_perspective:
         sess.close(); return jsonify({"status":"cached"})
-    res = analyse_article({"title":art.title,"summary":art.summary},
-                          max_words=70,max_tokens=600)
+    res = analyse_article({"title":art.title,"summary":art.summary})
     
     # Update article with new analysis
     art.nuanced_perspective = json.dumps(res, ensure_ascii=False)
@@ -128,11 +131,25 @@ def analytics():
 @app.post("/reset-analytics")
 def reset_analytics():
     sess = Session()
-    sess.query(Article).update(
-        {Article.balanced_title:None, Article.balanced_summary:None,
-         Article.bias_score:None, Article.bias_label:None,
-         Article.bias_explanation:None, Article.openai_tokens:0})
-    sess.commit(); sess.close(); return ("",204)
+    sess.query(Article).update({
+        # Old fields
+        Article.balanced_title: None,
+        Article.balanced_summary: None,
+        Article.bias_score: None,
+        Article.bias_label: None,
+        Article.bias_explanation: None,
+        # New fields
+        Article.nuanced_perspective: None,
+        Article.verified_claims: 0,
+        Article.corrected_claims: 0,
+        Article.analysis_sources: None,
+        Article.analyzed_at: None,
+        Article.last_updated_at: None,
+        Article.openai_tokens: 0
+    })
+    sess.commit()
+    sess.close()
+    return ("", 204)
 
 if __name__ == "__main__":
     app.run()

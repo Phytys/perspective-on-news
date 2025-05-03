@@ -27,57 +27,292 @@
     <h2>{{ art.title }}</h2>
     {% if art.summary %}<p>{{ art.summary }}</p>{% endif %}
     <p><a href="{{ art.url }}" target="_blank" rel="noopener">Läs hos {{ art.site.title() }}</a></p>
+    <p class="article-meta">
+      <span class="fetch-date">Publicerad: {{ art.fetched_at.strftime('%Y-%m-%d %H:%M') }} UTC</span>
+    </p>
 
     {% if art.nuanced_perspective %}
       <hr>
       <h3>Nyanserad bild</h3>
       {% set analysis = art.nuanced_perspective|from_json %}
       <div class="analysis">
+        {% if analysis.model_used %}
+        <div class="model-info">
+          <span class="model-badge">Analysmodell: {{ analysis.model_used }}</span>
+        </div>
+        {% endif %}
+        {% if analysis.main_facts %}
         <h4>Huvudfakta</h4>
         <p>{{ analysis.main_facts }}</p>
-        
-        <h4>Bakgrund</h4>
-        <p>{{ analysis.context }}</p>
-        
-        <h4>Perspektiv</h4>
-        <p>{{ analysis.perspectives }}</p>
-        
-        <h4>Konsekvenser</h4>
-        <p>{{ analysis.implications }}</p>
-        
-        {% if analysis.verification.verified_claims %}
-        <h4>Verifierade påståenden</h4>
-        <ul>
-          {% for claim in analysis.verification.verified_claims %}
-            <li>{{ claim }}</li>
-          {% endfor %}
-        </ul>
         {% endif %}
         
-        {% if analysis.verification.corrected_claims %}
-        <h4>Korrigerade påståenden</h4>
-        <ul>
-          {% for claim in analysis.verification.corrected_claims %}
-            <li>{{ claim }}</li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-        
-        {% if analysis.sources %}
-        <h4>Källor</h4>
-        <ul>
-          {% for source in analysis.sources %}
-            <li>{{ source }}</li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-        
-        <p class="meta">
-          Analyserad: {{ art.analyzed_at.strftime("%Y-%m-%d %H:%M") }} UTC
-          {% if art.last_updated_at != art.analyzed_at %}
-            (Uppdaterad: {{ art.last_updated_at.strftime("%Y-%m-%d %H:%M") }} UTC)
+        {% if analysis.historical_context %}
+        <div class="historical-context">
+          <h4>Historisk kontext</h4>
+          {% if analysis.historical_context.background %}
+          <div class="context-section">
+            <h5>Bakgrund</h5>
+            <p>{{ analysis.historical_context.background }}</p>
+          </div>
           {% endif %}
-        </p>
+          
+          {% if analysis.historical_context.key_events %}
+          <div class="context-section">
+            <h5>Viktiga händelser</h5>
+            <ul>
+              {% for event in analysis.historical_context.key_events %}
+                <li>{{ event }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+          
+          {% if analysis.historical_context.structural_trends %}
+          <div class="context-section">
+            <h5>Strukturella trender</h5>
+            <ul>
+              {% for trend in analysis.historical_context.structural_trends %}
+                <li>{{ trend }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if analysis.key_arguments %}
+        <h4>Nyckelargument</h4>
+        <div class="arguments-sections">
+          {% if analysis.key_arguments.primary %}
+          <div class="argument-section primary">
+            <h5>Huvudargument</h5>
+            <p>{{ analysis.key_arguments.primary }}</p>
+          </div>
+          {% endif %}
+          
+          {% if analysis.key_arguments.counter %}
+          <div class="argument-section counter">
+            <h5>Motargument</h5>
+            <p>{{ analysis.key_arguments.counter }}</p>
+          </div>
+          {% endif %}
+          
+          {% if analysis.key_arguments.evidence %}
+          <div class="argument-section evidence">
+            <h5>Bevis och stöd</h5>
+            <ul>
+              {% for evidence in analysis.key_arguments.evidence %}
+                <li>{{ evidence }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if analysis.implications %}
+        <h4>Konsekvenser</h4>
+        <div class="implication-sections">
+          {% if analysis.implications.immediate %}
+          <div class="implication-section">
+            <h5>Direkta konsekvenser</h5>
+            <p>{{ analysis.implications.immediate }}</p>
+          </div>
+          {% endif %}
+          
+          {% if analysis.implications.long_term %}
+          <div class="implication-section">
+            <h5>Långsiktiga konsekvenser</h5>
+            <p>{{ analysis.implications.long_term }}</p>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+        
+        {% if analysis.content_type or analysis.model_used %}
+        <div class="analysis-meta">
+          {% if analysis.content_type %}
+          <p><strong>Innehållstyp:</strong> {{ analysis.content_type }}</p>
+          {% endif %}
+          {% if analysis.model_used %}
+          <p><strong>Använd modell:</strong> {{ analysis.model_used }}</p>
+          {% endif %}
+          {% if art.analyzed_at %}
+          <p>Analyserad: {{ art.analyzed_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+          {% endif %}
+          {% if art.last_updated_at and art.last_updated_at != art.analyzed_at %}
+          <p>Senast uppdaterad: {{ art.last_updated_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if art.verified_claims > 0 or art.corrected_claims > 0 %}
+        <div class="analysis-section">
+            <h3>Verification Summary</h3>
+            <div class="analysis-content">
+                {% if art.verified_claims > 0 %}
+                <div class="analysis-item">
+                    <h4>Verified Claims</h4>
+                    <p>{{ art.verified_claims }} claims were verified</p>
+                </div>
+                {% endif %}
+                {% if art.corrected_claims > 0 %}
+                <div class="analysis-item">
+                    <h4>Corrected Claims</h4>
+                    <p>{{ art.corrected_claims }} claims were corrected</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if analysis.bias_analysis %}
+        <div class="analysis-section">
+            <h3>Bias Analysis</h3>
+            <div class="analysis-content">
+                {% if analysis.bias_analysis.political_leaning %}
+                <div class="analysis-item">
+                    <h4>Political Leaning</h4>
+                    <p>{{ analysis.bias_analysis.political_leaning }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.bias_analysis.framing_analysis %}
+                <div class="analysis-item">
+                    <h4>Framing Analysis</h4>
+                    <p>{{ analysis.bias_analysis.framing_analysis }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.bias_analysis.language_analysis %}
+                <div class="analysis-item">
+                    <h4>Language Analysis</h4>
+                    <p>{{ analysis.bias_analysis.language_analysis }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.bias_analysis.source_analysis %}
+                <div class="analysis-item">
+                    <h4>Source Analysis</h4>
+                    <p>{{ analysis.bias_analysis.source_analysis }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.bias_analysis.omission_analysis %}
+                <div class="analysis-item">
+                    <h4>Omission Analysis</h4>
+                    <p>{{ analysis.bias_analysis.omission_analysis }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if analysis.balanced_perspective %}
+        <div class="analysis-section">
+            <h3>Balanced Perspective</h3>
+            <div class="analysis-content">
+                {% if analysis.balanced_perspective.missing_viewpoints %}
+                <div class="analysis-item">
+                    <h4>Missing Viewpoints</h4>
+                    <p>{{ analysis.balanced_perspective.missing_viewpoints }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.balanced_perspective.additional_context %}
+                <div class="analysis-item">
+                    <h4>Additional Context</h4>
+                    <p>{{ analysis.balanced_perspective.additional_context }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.balanced_perspective.improvement_suggestions %}
+                <div class="analysis-item">
+                    <h4>Improvement Suggestions</h4>
+                    <p>{{ analysis.balanced_perspective.improvement_suggestions }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if analysis.factual_accuracy %}
+        <div class="analysis-section">
+            <h3>Factual Accuracy</h3>
+            <div class="analysis-content">
+                {% if analysis.factual_accuracy.claim_verification %}
+                <div class="analysis-item">
+                    <h4>Claim Verification</h4>
+                    <p>{{ analysis.factual_accuracy.claim_verification }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.factual_accuracy.unsupported_assertions %}
+                <div class="analysis-item">
+                    <h4>Unsupported Assertions</h4>
+                    <p>{{ analysis.factual_accuracy.unsupported_assertions }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.factual_accuracy.logical_fallacies %}
+                <div class="analysis-item">
+                    <h4>Logical Fallacies</h4>
+                    <p>{{ analysis.factual_accuracy.logical_fallacies }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.factual_accuracy.source_credibility %}
+                <div class="analysis-item">
+                    <h4>Source Credibility</h4>
+                    <p>{{ analysis.factual_accuracy.source_credibility }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if analysis.reporting_quality %}
+        <div class="analysis-section">
+            <h3>Reporting Quality</h3>
+            <div class="analysis-content">
+                <div class="quality-scores">
+                    {% if analysis.reporting_quality.objectivity_score is not none %}
+                    <div class="score-item">
+                        <h4>Objectivity</h4>
+                        <div class="score-bar">
+                            <div class="score-fill objectivity-score"></div>
+                        </div>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.objectivity_score * 100) }}%</span>
+                    </div>
+                    {% endif %}
+                    {% if analysis.reporting_quality.depth_score is not none %}
+                    <div class="score-item">
+                        <h4>Depth</h4>
+                        <div class="score-bar">
+                            <div class="score-fill depth-score"></div>
+                        </div>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.depth_score * 100) }}%</span>
+                    </div>
+                    {% endif %}
+                    {% if analysis.reporting_quality.evidence_score is not none %}
+                    <div class="score-item">
+                        <h4>Evidence</h4>
+                        <div class="score-bar">
+                            <div class="score-fill evidence-score"></div>
+                        </div>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.evidence_score * 100) }}%</span>
+                    </div>
+                    {% endif %}
+                    {% if analysis.reporting_quality.clarity_score is not none %}
+                    <div class="score-item">
+                        <h4>Clarity</h4>
+                        <div class="score-bar">
+                            <div class="score-fill clarity-score"></div>
+                        </div>
+                        <span class="score-value">{{ "%.1f"|format(analysis.reporting_quality.clarity_score * 100) }}%</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if analysis.reporting_quality.overall_quality %}
+                <div class="analysis-item">
+                    <h4>Overall Quality Assessment</h4>
+                    <p>{{ analysis.reporting_quality.overall_quality }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
       </div>
     {% else %}
       <button class="check" data-id="{{ art.id }}">Få nyanserad bild</button>
@@ -100,6 +335,26 @@ document.addEventListener('click', async e => {
   const j = await r.json();
   if (j.status !== 'ok' && j.status !== 'cached') { btn.textContent='error'; return; }
   location.reload();  // Reload to show new analysis
+});
+
+// Set score bar widths using CSS variables
+document.addEventListener('DOMContentLoaded', () => {
+  const analysis = document.querySelector('.analysis');
+  if (analysis) {
+    const quality = analysis.querySelector('.reporting_quality');
+    if (quality) {
+      const scores = {
+        objectivity: quality.objectivity_score * 100,
+        depth: quality.depth_score * 100,
+        evidence: quality.evidence_score * 100,
+        clarity: quality.clarity_score * 100
+      };
+      
+      Object.entries(scores).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(`--${key}-score`, `${value}%`);
+      });
+    }
+  }
 });
 </script>
 </body>

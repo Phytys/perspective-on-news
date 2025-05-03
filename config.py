@@ -9,11 +9,42 @@ load_dotenv()
 
 # OpenAI settings
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+
+# Model configurations
+MODELS = {
+    "geopolitics": {
+        "model": os.getenv("OPENAI_MODEL_GEOPOLITICS", "gpt-4.1"),
+        "max_tokens": int(os.getenv("MAX_TOKENS_GEOPOLITICS", "3000")),
+        "max_words": int(os.getenv("MAX_WORDS_GEOPOLITICS", "200"))
+    },
+    "economics": {
+        "model": os.getenv("OPENAI_MODEL_ECONOMICS", "gpt-4.1"),
+        "max_tokens": int(os.getenv("MAX_TOKENS_ECONOMICS", "3000")),
+        "max_words": int(os.getenv("MAX_WORDS_ECONOMICS", "200"))
+    },
+    "policy": {
+        "model": os.getenv("OPENAI_MODEL_POLICY", "gpt-4.1"),
+        "max_tokens": int(os.getenv("MAX_TOKENS_POLICY", "3000")),
+        "max_words": int(os.getenv("MAX_WORDS_POLICY", "200"))
+    },
+    "sports": {
+        "model": os.getenv("OPENAI_MODEL_SPORTS", "gpt-4.1-nano"),
+        "max_tokens": int(os.getenv("MAX_TOKENS_SPORTS", "1000")),
+        "max_words": int(os.getenv("MAX_WORDS_SPORTS", "70"))
+    },
+    "culture": {
+        "model": os.getenv("OPENAI_MODEL_CULTURE", "gpt-4.1-nano"),
+        "max_tokens": int(os.getenv("MAX_TOKENS_CULTURE", "1000")),
+        "max_words": int(os.getenv("MAX_WORDS_CULTURE", "70"))
+    },
+    "default": {
+        "model": os.getenv("OPENAI_MODEL_DEFAULT", "gpt-4.1-mini"),
+        "max_tokens": int(os.getenv("MAX_TOKENS_DEFAULT", "1500")),
+        "max_words": int(os.getenv("MAX_WORDS_DEFAULT", "100"))
+    }
+}
 
 # Analysis settings
-MAX_WORDS = int(os.getenv("MAX_WORDS", "70"))  # Max words in analysis sections
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", "600"))  # Max tokens for OpenAI API
 ANALYSE_LIMIT = int(os.getenv("ANALYSE_LIMIT", "1"))  # Default articles to analyze per site
 
 # News fetching settings

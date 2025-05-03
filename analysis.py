@@ -4,42 +4,157 @@ Both fetch_news.py (batch) and app.py (lazy button) import this.
 """
 import json, time, logging
 import openai
-from config import OPENAI_API_KEY, OPENAI_MODEL, MAX_WORDS, MAX_TOKENS
+from config import OPENAI_API_KEY, MODELS
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 log = logging.getLogger("analysis")
 
-_SYSTEM_PROMPT_TEMPLATE = """Du är en erfaren svensk nyhetsanalytiker.
-För varje artikel (rubrik + sammanfattning) returnera strikt JSON med följande struktur:
+SYSTEM_PROMPT = """Du är en expert på nyhetsanalys med djup expertis inom mediabiasanalys, faktakontroll och balanserad rapportering. Din uppgift är att analysera nyhetsartiklar med följande huvudmål:
 
+1. Identifiera och analysera potentiella bias i artikeln:
+   - Politiska lutningar och ideologisk ramverk
+   - Språkval och känslomässiga vädjanden
+   - Källval och representation
+   - Utelämnande av relevant kontext eller perspektiv
+   - Användning av laddade termer eller värdeomdömen
+
+2. Ge ett balanserat perspektiv genom att:
+   - Identifiera saknade synvinklar eller motargument
+   - Föreslå ytterligare kontext som skulle ge balans
+   - Belysa områden där rapporteringen kunde vara mer objektiv
+   - Notera eventuella intressekonflikter
+
+3. Bedöma faktisk korrekthet och tillförlitlighet:
+   - Verifiera påståenden mot kända fakta
+   - Identifiera obevisade påståenden
+   - Notera eventuella logiska felslut eller vilseledande uttalanden
+   - Utvärdera källornas trovärdighet
+
+4. Utvärdera den övergripande kvaliteten på rapporteringen:
+   - Objektivitet och rättvisa
+   - Analysdjup
+   - Användning av bevis och källor
+   - Tydlighet och transparens
+
+Din analys ska vara grundlig, objektiv och fokuserad på att hjälpa läsare att förstå både innehållet och potentiella begränsningar i artikeln. Undvik att göra definitiva påståenden om bias utan tydliga bevis, och behåll alltid ett balanserat, analytiskt perspektiv.
+
+Formatera ditt svar som ett JSON-objekt med följande struktur:
 {{
-    "main_facts": "Huvudfakta och påståenden från artikeln",
-    "context": "Kort bakgrund och historisk kontext",
-    "perspectives": "Olika perspektiv och synvinklar",
-    "implications": "Konsekvenser och påverkan",
-    "verification": {{
-        "verified_claims": ["Lista av verifierade påståenden"],
-        "corrected_claims": ["Lista av korrigerade påståenden med motbevis"]
+    "bias_analysis": {{
+        "political_leaning": "string",
+        "framing_analysis": "string",
+        "language_analysis": "string",
+        "source_analysis": "string",
+        "omission_analysis": "string"
     }},
-    "sources": ["Källor för verifiering och kontext"]
+    "balanced_perspective": {{
+        "missing_viewpoints": "string",
+        "additional_context": "string",
+        "improvement_suggestions": "string"
+    }},
+    "factual_accuracy": {{
+        "claim_verification": "string",
+        "unsupported_assertions": "string",
+        "logical_fallacies": "string",
+        "source_credibility": "string"
+    }},
+    "reporting_quality": {{
+        "objectivity_score": float,
+        "depth_score": float,
+        "evidence_score": float,
+        "clarity_score": float,
+        "overall_quality": "string"
+    }}
 }}
 
-Håll varje sektion koncis (max {max_words} ord). Fokusera på att ge en nyanserad bild
-som hjälper läsaren förstå hela sammanhanget. Korrigera felaktiga påståenden genom att
-presentera motbevis, inte genom att direkt säga att de är fel."""
+Håll din analys koncis och fokusera på de viktigaste aspekterna. Begränsa ditt svar till cirka {max_words} ord."""
 
+def classify_content(title: str, summary: str) -> str:
+    """
+    Classify the content type based on keywords and context.
+    Returns: "geopolitics", "economics", "policy", "sports", "culture", or "default"
+    """
+    # Keywords for classification
+    geopolitics_keywords = [
+        "krig", "konflikt", "diplomati", "president", "minister", "regering",
+        "nato", "eu", "un", "militär", "ambassad", "utrikes", "internationell",
+        "trump", "biden", "putin", "zelensky", "kina", "ryssland", "ukraina",
+        "migration", "flykting", "terrorism", "säkerhetspolitik"
+    ]
+    
+    economics_keywords = [
+        "ekonomi", "börs", "aktie", "valuta", "inflation", "ränta",
+        "bank", "företag", "konjunktur", "tillväxt", "recession",
+        "dollar", "euro", "krona", "marknad", "handel", "export", "import",
+        "pris", "lön", "skatt", "budget", "finans", "pension"
+    ]
+    
+    policy_keywords = [
+        "vård", "sjukvård", "omsorg", "skola", "utbildning", "bostad",
+        "social", "hälsa", "miljö", "klimat", "infrastruktur", "transport",
+        "kommun", "region", "myndighet", "lag", "förordning", "reform",
+        "politik", "val", "parti", "riksdag", "regering", "minister",
+        "sjukhus", "vårdcentral", "barnomsorg", "äldreomsorg", "handikapp",
+        "funktionsnedsättning", "psykiatri", "psykisk hälsa"
+    ]
+    
+    sports_keywords = [
+        "fotboll", "hockey", "tennis", "golf", "olympiska", "vm", "em",
+        "match", "turnering", "spelare", "lag", "coach", "tränare",
+        "serie", "cup", "final", "semifinal", "kvartsfinal"
+    ]
+    
+    culture_keywords = [
+        "film", "musik", "konst", "teater", "kultur", "festival",
+        "artist", "skådespelare", "författare", "bok", "album",
+        "premiär", "utställning", "konsert", "show"
+    ]
+    
+    # Combine title and summary for analysis
+    text = (title + " " + summary).lower()
+    
+    # Count keyword matches
+    geopolitics_score = sum(1 for word in geopolitics_keywords if word in text)
+    economics_score = sum(1 for word in economics_keywords if word in text)
+    policy_score = sum(1 for word in policy_keywords if word in text)
+    sports_score = sum(1 for word in sports_keywords if word in text)
+    culture_score = sum(1 for word in culture_keywords if word in text)
+    
+    # Get the category with highest score
+    scores = {
+        "geopolitics": geopolitics_score,
+        "economics": economics_score,
+        "policy": policy_score,
+        "sports": sports_score,
+        "culture": culture_score
+    }
+    
+    max_category = max(scores.items(), key=lambda x: x[1])
+    return max_category[0] if max_category[1] > 0 else "default"
+
+def get_model_config(content_type: str) -> dict:
+    """Get the appropriate model configuration for the content type."""
+    return MODELS.get(content_type, MODELS["default"])
 
 def analyse_article(article: dict,
                     *,
-                    max_words: int = MAX_WORDS,
-                    max_tokens: int = MAX_TOKENS,
-                    model: str | None = None) -> dict:
+                    max_words: int = None,
+                    max_tokens: int = None,
+                    model: str = None) -> dict:
     """
     article: {"title": "...", "summary": "..."}
     returns dict + key 'tokens' (prompt+completion)
     """
-    system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(max_words=max_words)
-    model = model or OPENAI_MODEL
+    # Classify content and get appropriate model config
+    content_type = classify_content(article["title"], article["summary"])
+    model_config = get_model_config(content_type)
+    
+    # Use provided values or defaults from config
+    max_words = max_words or model_config["max_words"]
+    max_tokens = max_tokens or model_config["max_tokens"]
+    model = model or model_config["model"]
+    
+    system_prompt = SYSTEM_PROMPT.format(max_words=max_words)
     tries = 0
     while tries < 3:
         tries += 1
@@ -56,6 +171,9 @@ def analyse_article(article: dict,
             raw  = resp.choices[0].message.content
             data = json.loads(raw)
             data["tokens"] = resp.usage.total_tokens
+            data["content_type"] = content_type  # Add content type to response
+            data["model_used"] = model  # Add model info to response
+            log.info("Analysis structure: %s", json.dumps(data, ensure_ascii=False, indent=2))
             return data
         except Exception as e:
             log.warning("OpenAI error (try %d/3): %s", tries, e)
@@ -63,14 +181,32 @@ def analyse_article(article: dict,
 
     # all retries failed → return empty shell
     return {
-        "main_facts": None,
-        "context": None,
-        "perspectives": None,
-        "implications": None,
-        "verification": {
-            "verified_claims": [],
-            "corrected_claims": []
+        "bias_analysis": {
+            "political_leaning": None,
+            "framing_analysis": None,
+            "language_analysis": None,
+            "source_analysis": None,
+            "omission_analysis": None
         },
-        "sources": [],
+        "balanced_perspective": {
+            "missing_viewpoints": None,
+            "additional_context": None,
+            "improvement_suggestions": None
+        },
+        "factual_accuracy": {
+            "claim_verification": None,
+            "unsupported_assertions": None,
+            "logical_fallacies": None,
+            "source_credibility": None
+        },
+        "reporting_quality": {
+            "objectivity_score": None,
+            "depth_score": None,
+            "evidence_score": None,
+            "clarity_score": None,
+            "overall_quality": None
+        },
         "tokens": 0,
+        "content_type": content_type,
+        "model_used": model
     }

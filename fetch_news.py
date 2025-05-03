@@ -16,7 +16,7 @@ from models import Session, Article, init_db
 from analysis import analyse_article
 from sources import SITES
 from config import (
-    NEWS_PER_SITE, NEWS_SUMMARY_LEN, MAX_WORDS, MAX_TOKENS, ANALYSE_LIMIT
+    NEWS_PER_SITE, NEWS_SUMMARY_LEN, MODELS, ANALYSE_LIMIT
 )
 
 load_dotenv()
@@ -159,10 +159,10 @@ def build_cli() -> argparse.ArgumentParser:
                    help=f"headlines per site (default: {NEWS_PER_SITE})")
     p.add_argument("--news-len",         type=int, default=NEWS_SUMMARY_LEN,
                    help=f"max words kept from feed summary (default: {NEWS_SUMMARY_LEN})")
-    p.add_argument("--balanced-len",     type=int, default=MAX_WORDS,
-                   help=f"max words GPT may return (default: {MAX_WORDS})")
-    p.add_argument("--max-tokens",       type=int, default=MAX_TOKENS,
-                   help=f"OpenAI max_tokens (default: {MAX_TOKENS})")
+    p.add_argument("--balanced-len",     type=int, default=MODELS["default"]["max_words"],
+                   help=f"max words GPT may return (default: {MODELS['default']['max_words']})")
+    p.add_argument("--max-tokens",       type=int, default=MODELS["default"]["max_tokens"],
+                   help=f"OpenAI max_tokens (default: {MODELS['default']['max_tokens']})")
     p.add_argument("--analyse", action="store_true",
                    help="call OpenAI right away (otherwise only fetch headlines)")
     p.add_argument("--analyse-limit", type=int, default=ANALYSE_LIMIT,
@@ -182,10 +182,40 @@ def main() -> None:
         pulled += len(items)
         site_analysed = 0  # Track how many articles we've analyzed for this site
         for art in items:
-            # skip duplicates
-            if session.query(Article).filter_by(site=site, url=art["url"]).first():
+            # Check if article exists and needs analysis
+            existing = session.query(Article).filter_by(site=site, url=art["url"]).first()
+            if existing:
+                if args.analyse and not existing.nuanced_perspective and site_analysed < args.analyse_limit:
+                    # Article exists but needs analysis
+                    analysis = analyse_article(
+                        art,
+                        max_words=args.balanced_len,
+                        max_tokens=args.max_tokens,
+                    )
+                    analysed += 1
+                    site_analysed += 1
+                    tokens += analysis.get("tokens", 0)
+                    
+                    # Update existing article with analysis
+                    now = datetime.utcnow()
+                    existing.nuanced_perspective = json.dumps(analysis, ensure_ascii=False)
+                    existing.verified_claims = len(analysis.get("verification", {}).get("verified_claims", []))
+                    existing.corrected_claims = len(analysis.get("verification", {}).get("corrected_claims", []))
+                    existing.analysis_sources = json.dumps(analysis.get("sources", []), ensure_ascii=False)
+                    existing.analyzed_at = now
+                    existing.last_updated_at = now
+                    
+                    # Legacy fields
+                    existing.balanced_title = analysis.get("main_facts", "")[:300]
+                    existing.balanced_summary = json.dumps(analysis.get("context", {}), ensure_ascii=False)
+                    existing.bias_score = 0
+                    existing.bias_label = "nyanserad"
+                    existing.bias_explanation = json.dumps(analysis.get("perspectives", {}), ensure_ascii=False)
+                    existing.openai_tokens = analysis.get("tokens", 0)
+                    
+                    session.commit()
                 continue
-
+            
             if args.analyse and site_analysed < args.analyse_limit:
                 analysis = analyse_article(
                     art,
@@ -213,10 +243,10 @@ def main() -> None:
                     last_updated_at=now,
                     # Legacy fields
                     balanced_title=analysis.get("main_facts", "")[:300],
-                    balanced_summary=analysis.get("context", ""),
+                    balanced_summary=json.dumps(analysis.get("context", {}), ensure_ascii=False),
                     bias_score=0,
                     bias_label="nyanserad",
-                    bias_explanation=analysis.get("perspectives", ""),
+                    bias_explanation=json.dumps(analysis.get("perspectives", {}), ensure_ascii=False),
                     openai_tokens=analysis.get("tokens", 0),
                 )
             else:

@@ -1,14 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="sv">
 <head>
 <meta charset="utf-8">
-<title>Balanced News – Analytics</title>
+<title>Balanced News – Analys</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 <header>
+  <nav class="tabs">
+    <a href="/" class="{{ 'on' if current_site=='all' else '' }}">Alla</a>
+    {% for slug, meta in sites.items() %}
+      <a href="/site/{{ slug }}"
+         class="{{ 'on' if current_site==slug else '' }}">{{ meta.name }}</a>
+    {% endfor %}
+    <a href="/analytics" class="right">Analys&nbsp;📈</a>
+  </nav>
+
   <h1>Verifiering per källa</h1>
   <p class="tagline">Antal verifierade och korrigerade påståenden</p>
 </header>
@@ -18,8 +27,8 @@
   <p id="nodata" style="text-align:center;color:#666;margin:4rem 0;">Ingen verifieringsdata än. 
      Analysera minst en artikel för att se diagrammet.</p>
 
-  <h2 style="margin-top:3rem;">Återställ demo data</h2>
-  <button id="resetBtn">Återställ lagrad data</button>
+  <h2 style="margin-top:3rem;">Återställ data</h2>
+  <button id="resetBtn">Återställ all analysdata</button>
 </main>
 
 <footer>
@@ -45,12 +54,12 @@
         labels,
         datasets:[
           { 
-            label: 'Verifierade',
+            label: 'Verifierade påståenden',
             data: verified,
             backgroundColor: '#4CAF50'
           },
           {
-            label: 'Korrigerade',
+            label: 'Korrigerade påståenden',
             data: corrected,
             backgroundColor: '#FFC107'
           }
@@ -60,14 +69,34 @@
         scales: { 
           y: { 
             beginAtZero: true,
-            grid: { color: '#ccc' }
+            grid: { color: '#ccc' },
+            title: {
+              display: true,
+              text: 'Antal påståenden'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Nyhetskälla'
+            }
           }
         },
         plugins: {
-          legend: { display: true },
+          legend: { 
+            display: true,
+            position: 'top'
+          },
           tooltip: {
             callbacks: {
               label: (c) => `${c.dataset.label}: ${c.parsed.y}`
+            }
+          },
+          title: {
+            display: true,
+            text: 'Verifiering av påståenden per nyhetskälla',
+            font: {
+              size: 16
             }
           }
         }
@@ -77,7 +106,7 @@
 
   // dev-only reset button
   document.getElementById('resetBtn').onclick = async ()=>{
-    if(!confirm('Ta bort all lagrad data?')) return;
+    if(!confirm('Är du säker på att du vill ta bort all analysdata?')) return;
     await fetch('/reset-analytics', {method:'POST'});
     location.reload();
   };
