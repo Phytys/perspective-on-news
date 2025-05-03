@@ -357,32 +357,74 @@
 document.addEventListener('click', async e => {
   if (!e.target.matches('button.check')) return;
   const btn = e.target, id = btn.dataset.id;
-  btn.disabled = true; btn.textContent = '…';
-  const r = await fetch(`/api/analyse/${id}`, {method: 'POST'});
-  if (!r.ok) { btn.textContent = 'error'; return; }
-  const j = await r.json();
-  if (j.status !== 'ok' && j.status !== 'cached') { btn.textContent='error'; return; }
-  location.reload();  // Reload to show new analysis
+  
+  // Add loading state
+  btn.disabled = true;
+  btn.classList.add('analyzing');
+  btn.textContent = 'Analyserar...';
+  
+  try {
+    const r = await fetch(`/api/analyse/${id}`, {method: 'POST'});
+    if (!r.ok) { 
+      btn.textContent = 'Ett fel uppstod';
+      btn.classList.remove('analyzing');
+      return; 
+    }
+    
+    const j = await r.json();
+    if (j.status !== 'ok' && j.status !== 'cached') { 
+      btn.textContent = 'Ett fel uppstod';
+      btn.classList.remove('analyzing');
+      return; 
+    }
+    
+    // Add loading animation to the card
+    const card = btn.closest('.card');
+    card.classList.add('loading');
+    
+    // Reload after a short delay to show the loading animation
+    setTimeout(() => location.reload(), 500);
+    
+  } catch (error) {
+    btn.textContent = 'Ett fel uppstod';
+    btn.classList.remove('analyzing');
+  }
 });
 
 // Set score bar widths using CSS variables
 document.addEventListener('DOMContentLoaded', () => {
   const analysis = document.querySelector('.analysis');
   if (analysis) {
-    const quality = analysis.querySelector('.reporting_quality');
-    if (quality) {
-      const scores = {
-        objectivity: quality.objectivity_score * 100,
-        depth: quality.depth_score * 100,
-        evidence: quality.evidence_score * 100,
-        clarity: quality.clarity_score * 100
-      };
+    // Get all score items
+    const scoreItems = analysis.querySelectorAll('.score-item');
+    
+    scoreItems.forEach(item => {
+      const scoreValue = item.querySelector('.score-value');
+      const scoreFill = item.querySelector('.score-fill');
       
-      Object.entries(scores).forEach(([key, value]) => {
-        document.documentElement.style.setProperty(`--${key}-score`, `${value}%`);
-      });
-    }
+      if (scoreValue && scoreFill) {
+        // Extract the percentage value from the text (remove the % sign)
+        const value = parseFloat(scoreValue.textContent);
+        if (!isNaN(value)) {
+          // Set the width directly on the score-fill element
+          scoreFill.style.width = `${value}%`;
+        }
+      }
+    });
   }
+  
+  // Add hover effects to cards
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('mouseenter', () => {
+      card.style.transform = 'translateY(-4px)';
+      card.style.boxShadow = '0 8px 32px var(--shadow)';
+    });
+    
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'translateY(0)';
+      card.style.boxShadow = '0 4px 24px var(--shadow)';
+    });
+  });
 });
 </script>
 </body>

@@ -11,6 +11,29 @@ A news aggregator that fetches headlines from Swedish news sources, analyzes the
 - Simple, clean UI inspired by Steve Jobs' design philosophy
 - Bias analytics dashboard
 - Caches analysis results to minimize API costs
+- Comprehensive quality metrics for news reporting
+
+## Analysis Components
+
+### Core Analysis
+- Bias detection and analysis
+- Balanced perspective generation
+- Factual accuracy verification
+- Source credibility assessment
+
+### Quality Metrics
+Each article is evaluated on a 0-100% scale for:
+- **Objectivity**: How balanced and impartial is the reporting?
+- **Depth**: How well are context and consequences explained?
+- **Evidence**: How well are claims supported with facts and sources?
+- **Clarity**: How effectively is the information communicated?
+
+### Ray Dalio Perspective
+For geopolitics and economics articles, includes:
+- Cycle analysis: Current phase in economic/geopolitical cycles
+- Pattern identification: Historical parallels and lessons
+- Long-term implications: Quantifiable consequences
+- Applied principles: Specific Dalio framework applications
 
 ## Supported News Sources
 
@@ -58,7 +81,7 @@ The following environment variables can be set in `.env`:
 | Key | Description | Default |
 |-----|-------------|---------|
 | `OPENAI_API_KEY` | Required. Your OpenAI API key | - |
-| `OPENAI_MODEL` | Chat model | gpt-3.5-turbo |
+| `OPENAI_MODEL` | Chat model | gpt-4.1 |
 
 ### Analysis Settings
 | Key | Description | Default |
@@ -132,6 +155,23 @@ balanced_news/
 └── static/
     └── style.css      # Minimal styling
 ```
+
+## Analysis Methodology
+
+### Quality Assessment
+Articles are evaluated on a 0-100% scale with the following criteria:
+- 0-20%: Severe deficiencies, misleading or missing basic elements
+- 21-40%: Significant issues, superficial or one-sided
+- 41-60%: Acceptable but with clear areas for improvement
+- 61-80%: Good quality with minor issues
+- 81-100%: Excellent, well-balanced and thorough
+
+### Ray Dalio Framework
+The system applies Dalio's principles to analyze geopolitical and economic news:
+- Identifies current cycle phases
+- Draws historical parallels
+- Provides quantifiable implications
+- Applies specific principles from Dalio's works
 
 ## Development
 
