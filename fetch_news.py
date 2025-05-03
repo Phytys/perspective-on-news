@@ -39,7 +39,7 @@ def truncate_words(txt: str, n: int) -> str:
 
 # -----------------------------------------------------------------------------
 CTRL_RE   = re.compile(rb"[\x00-\x08\x0b\x0c\x0e-\x1f]")              # illegal control chars
-BAD_AMPER = re.compile(r"&(?!(?:[a-zA-Z]+|#\d+|#x[0-9a-fA-F]+);)")    # naked “&” breaks XML
+BAD_AMPER = re.compile(r"&(?!(?:[a-zA-Z]+|#\d+|#x[0-9a-fA-F]+);)")    # naked " & " breaks XML
 
 def rss_top(site: str, n: int, news_len: int) -> list[dict]:
     """
@@ -47,7 +47,7 @@ def rss_top(site: str, n: int, news_len: int) -> list[dict]:
     Handles:
       • stray control bytes
       • undefined entities (&nbsp;/&aring;…)
-      • naked “&” inside text or attributes
+      • naked " & " inside text or attributes
     Works even when feedparser sets bozo=True, as long as entries[] exist.
     """
     url = SITES[site]["rss"]
@@ -87,7 +87,6 @@ def rss_top(site: str, n: int, news_len: int) -> list[dict]:
 def html_top(site: str, n: int, news_len: int) -> List[Dict]:
     """
     Fallback scraping for sites whose front page is server‑rendered.
-    Nyheter24 and Omni are React → we use site‑specific selectors.
     """
     url = SITES[site]["html"]
     r = requests.get(
@@ -102,27 +101,7 @@ def html_top(site: str, n: int, news_len: int) -> List[Dict]:
     soup = BeautifulSoup(r.text, "html.parser")
     stories = []
 
-    if site == "nyheter24":
-        for h in soup.select("h3.n24-article-card__title")[:n]:
-            stories.append(
-                {
-                    "title": h.get_text(strip=True),
-                    "summary": "",
-                    "url": h.find_parent("a")["href"],         # already absolute
-                }
-            )
-
-    elif site == "omni":
-        for a in soup.select("a.card__title")[:n]:
-            stories.append(
-                {
-                    "title": a.get_text(strip=True),
-                    "summary": "",
-                    "url": "https://www.omni.se" + a["href"],  # prepend domain
-                }
-            )
-
-    elif site == "dagens":
+    if site == "dagens":
         for a in soup.select("a.front__article-link")[:n]:
                 stories.append(
                     {
