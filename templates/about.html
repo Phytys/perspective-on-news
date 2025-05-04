@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Om Perspektiv på nyheter</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<header>
+  <nav class="tabs">
+    <a href="/">Alla</a>
+    {% for slug, meta in sites.items() %}
+      <a href="/site/{{ slug }}">{{ meta.name }}</a>
+    {% endfor %}
+    <a href="/analytics" class="right">Analys&nbsp;📈</a>
+    <a href="/about" class="right on">Om</a>
+  </nav>
+
+  <h1>Om Perspektiv på nyheter</h1>
+  <p class="tagline">En fallstudie i att motverka felaktig nyhetsrapportering</p>
+</header>
+
+<main style="max-width:800px;margin:0 auto;padding:2rem 1rem 4rem;">
+  <article class="card">
+    <h2>Vad är Perspektiv på nyheter?</h2>
+    <p>Perspektiv på nyheter är en experimentell plattform som syftar till att hjälpa läsare att få en mer nyanserad bild av nyhetsrapporteringen. Vi analyserar nyhetsrubriker och sammanfattningar för att identifiera potentiella bias, saknade perspektiv och oklarheter i rapporteringen.</p>
+
+    <h2>Hur fungerar det?</h2>
+    <p>För varje nyhetsartikel analyserar vi:</p>
+    <ul>
+      <li>Rubriken och sammanfattningen för potentiell bias</li>
+      <li>Påståenden som behöver verifieras</li>
+      <li>Saknade perspektiv eller viktig kontext</li>
+      <li>Rapporteringens kvalitet och balans</li>
+    </ul>
+
+    <div class="important-note">
+      <h3>Viktigt att notera</h3>
+      <p>Vår analys baseras endast på artikelns rubrik och sammanfattning. Detta är en medveten begränsning som hjälper oss att identifiera potentiella problem i hur nyheter presenteras till läsare.</p>
+      <p>Efter att ha läst vår analys rekommenderar vi att du läser hela artikeln för att se om den svarar på de frågetecken som identifierats eller adresserar andra problem som analysen har pekat ut.</p>
+    </div>
+
+    <h2>En fallstudie i nyhetskvalitet</h2>
+    <p>Denna plattform är en del av en större fallstudie som undersöker hur vi kan använda teknologi för att:</p>
+    <ul>
+      <li>Identifiera och motverka felaktig nyhetsrapportering</li>
+      <li>Förbättra transparensen i nyhetsrapportering</li>
+      <li>Hjälpa läsare att ta del av fler perspektiv</li>
+      <li>Förstärka kritiskt tänkande i nyhetskonsumtion</li>
+    </ul>
+
+    <h2>Vårt mål</h2>
+    <p>Vi strävar efter att skapa ett verktyg som kan hjälpa läsare att:</p>
+    <ul>
+      <li>Identifiera potentiella problem i nyhetsrapportering</li>
+      <li>Få tillgång till fler perspektiv på samma nyhet</li>
+      <li>Utveckla ett mer kritiskt förhållningssätt till nyheter</li>
+      <li>Ta mer välgrundade beslut baserade på nyhetsinformation</li>
+    </ul>
+
+    <div class="disclaimer">
+      <h3>Ansvarsfriskrivning</h3>
+      <p>Denna plattform är ett experimentellt verktyg och inte en slutgiltig lösning. Vår analys är inte perfekt och bör ses som ett komplement till, inte en ersättning för, kritiskt tänkande och egen research.</p>
+    </div>
+  </article>
+</main>
+
+<footer>
+  <small>Uppdaterad {{ now.strftime("%Y-%m-%d %H:%M UTC") }} · Prototyp</small>
+</footer>
+</body>
+</html> 

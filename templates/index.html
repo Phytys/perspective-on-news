@@ -14,11 +14,12 @@
       <a href="/site/{{ slug }}"
          class="{{ 'on' if current_site==slug else '' }}">{{ meta.name }}</a>
     {% endfor %}
-    <a href="/analytics" class="right">Analytics&nbsp;📈</a>
+    <a href="/analytics" class="right">Analys&nbsp;📈</a>
+    <a href="/about" class="right">Om</a>
   </nav>  
   
-  <h1>Balanced&nbsp;News</h1>
-  <p class="tagline">Se nyheten — och hela sammanhanget.</p>
+  <h1>Perspektiv på nyheter</h1>
+  <p class="tagline">Se nyheten — och sammanhanget.</p>
   
   <div class="header-actions">
     <form class="search-form" action="{{ url_for('index_all' if current_site=='all' else 'index_site', site=current_site) }}" method="get">
@@ -45,10 +46,17 @@
 
     {% if art.nuanced_perspective %}
       <hr>
-      <h3>Nyanserad bild</h3>
+      <div class="analysis-header">
+        <h3>Nyanserad bild</h3>
+        <button class="toggle-analysis" onclick="toggleAnalysis(this)">Visa analys</button>
+      </div>
       <p class="analysis-note">Analys baserad på rubrik och sammanfattning</p>
+      <div class="analysis-scope">
+        <p class="scope-warning">⚠️ Denna analys baseras endast på artikelns rubrik och sammanfattning, inte hela artikeln.</p>
+        <p class="scope-cta">För en komplett bild och svar på eventuella frågetecken, rekommenderar vi att du läser hela artikeln hos {{ art.site.title() }}.</p>
+      </div>
       {% set analysis = art.nuanced_perspective|from_json %}
-      <div class="analysis">
+      <div class="analysis collapsed">
         {% if analysis.model_used %}
         <div class="model-info">
           <span class="model-badge">Analysmodell: {{ analysis.model_used }}</span>
@@ -247,6 +255,20 @@
                 {% if analysis.factual_accuracy.claim_verification %}
                 <div class="analysis-item">
                     <h4>Verifiering av påståenden</h4>
+                    <div class="confidence-levels">
+                        <div class="confidence-item high">
+                            <span class="confidence-label">Hög konfidens</span>
+                            <span class="confidence-desc">Påståendet kan verifieras med säkerhet</span>
+                        </div>
+                        <div class="confidence-item medium">
+                            <span class="confidence-label">Medel konfidens</span>
+                            <span class="confidence-desc">Påståendet kan delvis verifieras</span>
+                        </div>
+                        <div class="confidence-item low">
+                            <span class="confidence-label">Låg konfidens</span>
+                            <span class="confidence-desc">Otillräcklig information för verifiering</span>
+                        </div>
+                    </div>
                     <p>{{ analysis.factual_accuracy.claim_verification }}</p>
                 </div>
                 {% endif %}
@@ -561,6 +583,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+// Add toggle functionality for analysis sections
+function toggleAnalysis(button) {
+  const analysis = button.closest('.card').querySelector('.analysis');
+  const isCollapsed = analysis.classList.contains('collapsed');
+  
+  if (isCollapsed) {
+    analysis.classList.remove('collapsed');
+    button.textContent = 'Dölj analys';
+  } else {
+    analysis.classList.add('collapsed');
+    button.textContent = 'Visa analys';
+  }
+}
 </script>
 
 <style>

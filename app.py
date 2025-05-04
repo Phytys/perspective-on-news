@@ -408,5 +408,11 @@ def api_fetch_news():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/about')
+def about():
+    return render_template('about.html', 
+                         sites=SITES,
+                         now=datetime.utcnow())
+
 if __name__ == "__main__":
     app.run()
