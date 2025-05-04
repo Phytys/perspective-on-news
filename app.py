@@ -2,12 +2,15 @@
 from datetime import datetime
 import json
 from collections import defaultdict
-from flask import Flask, render_template, jsonify, abort
+from flask import Flask, render_template, jsonify, abort, request
 from dotenv import load_dotenv
 from models   import Session, Article, init_db
 from analysis import analyse_article
 from sources  import SITES           # ← dynamic registry
 from config   import MODELS
+from fetch_news import collect_news, NEWS_PER_SITE, NEWS_SUMMARY_LEN  # Import fetch functions
+from sqlalchemy import or_
+import logging
 
 load_dotenv()
 app = Flask(__name__)
@@ -31,86 +34,178 @@ def site_exists(slug: str) -> bool:     # central truth
 # ---------- front page (all) -----------------------------------------
 @app.route("/")
 def index_all():
+    query = request.args.get('q', '').strip()
     sess = Session()
-    arts = (
-        sess.query(Article).order_by(Article.fetched_at.desc()).limit(30).all()
-    )
+    
+    if query:
+        # Search in title and summary
+        arts = (
+            sess.query(Article)
+            .filter(or_(
+                Article.title.ilike(f'%{query}%'),
+                Article.summary.ilike(f'%{query}%')
+            ))
+            .order_by(Article.fetched_at.desc())
+            .limit(30)
+            .all()
+        )
+    else:
+        arts = (
+            sess.query(Article)
+            .order_by(Article.fetched_at.desc())
+            .limit(30)
+            .all()
+        )
+    
     sess.close()
     return render_template("index.html",
         sites=SITES, current_site="all", articles=arts,
-        now=datetime.utcnow())
+        now=datetime.utcnow(), search_query=query)
 
 # ---------- front page (single) --------------------------------------
 @app.route("/site/<site>")
 def index_site(site: str):
     if not site_exists(site):
         abort(404)
+    
+    query = request.args.get('q', '').strip()
     sess = Session()
-    arts = (
-        sess.query(Article)
-        .filter_by(site=site)
-        .order_by(Article.fetched_at.desc()).limit(30).all()
-    )
+    
+    if query:
+        # Search in title and summary for specific site
+        arts = (
+            sess.query(Article)
+            .filter_by(site=site)
+            .filter(or_(
+                Article.title.ilike(f'%{query}%'),
+                Article.summary.ilike(f'%{query}%')
+            ))
+            .order_by(Article.fetched_at.desc())
+            .limit(30)
+            .all()
+        )
+    else:
+        arts = (
+            sess.query(Article)
+            .filter_by(site=site)
+            .order_by(Article.fetched_at.desc())
+            .limit(30)
+            .all()
+        )
+    
     sess.close()
     return render_template("index.html",
         sites=SITES, current_site=site, articles=arts,
-        now=datetime.utcnow())
+        now=datetime.utcnow(), search_query=query)
 
 # ---------- analyse one article --------------------------------------
-@app.post("/api/analyse/<int:aid>")
-def api_analyse(aid: int):
-    sess = Session()
-    art = sess.get(Article, aid) or abort(404)
-    now = datetime.utcnow()
-    
-    if art.nuanced_perspective:
-        sess.close(); return jsonify({"status":"cached"})
-    res = analyse_article({"title":art.title,"summary":art.summary})
-    
-    # Update article with new analysis
-    art.nuanced_perspective = json.dumps(res, ensure_ascii=False)
-    
-    # Extract verification data from factual_accuracy
-    factual_accuracy = res.get("factual_accuracy", {})
-    claim_verification = factual_accuracy.get("claim_verification", "")
-    unsupported_assertions = factual_accuracy.get("unsupported_assertions", "")
-    
-    # Count verified and corrected claims
-    art.verified_claims = len([line for line in claim_verification.split('\n') if line.strip()])
-    art.corrected_claims = len([line for line in unsupported_assertions.split('\n') if line.strip()])
-    
-    art.analysis_sources = json.dumps(res.get("sources", []), ensure_ascii=False)
-    art.analyzed_at = now
-    art.last_updated_at = now
-    
-    # Keep old fields for backward compatibility
-    art.balanced_title = res.get("main_facts", "")[:300]  # Truncate to match column size
-    art.balanced_summary = res.get("context", "")
-    art.bias_score = 0  # No longer used but keeping for compatibility
-    art.bias_label = "nyanserad"
-    art.bias_explanation = res.get("perspectives", "")
-    art.openai_tokens = res.get("tokens", 0)
-    
-    sess.commit(); sess.close()
-    return jsonify({"status":"ok", **res})
+@app.route('/api/analyse', methods=['POST'])
+def api_analyse():
+    try:
+        data = request.get_json()
+        article_id = data.get('article_id')
+        
+        if not article_id:
+            return jsonify({'error': 'No article ID provided'}), 400
+            
+        sess = Session()
+        article = sess.query(Article).get(article_id)
+        if not article:
+            sess.close()
+            return jsonify({'error': 'Article not found'}), 404
+            
+        # Get analysis from OpenAI
+        analysis = analyse_article({"title": article.title, "summary": article.summary})
+        
+        # Update article with analysis results
+        article.bias_analysis = json.dumps(analysis.get('bias_analysis', {}), ensure_ascii=False)
+        article.balanced_perspective = json.dumps(analysis.get('balanced_perspective', {}), ensure_ascii=False)
+        article.factual_accuracy = json.dumps(analysis.get('factual_accuracy', {}), ensure_ascii=False)
+        article.reporting_quality = json.dumps(analysis.get('reporting_quality', {}), ensure_ascii=False)
+        article.dalio_perspective = json.dumps(analysis.get('dalio_perspective', {}), ensure_ascii=False)
+        
+        # Count verifications and corrections
+        claim_verification = analysis['factual_accuracy']['claim_verification']
+        unsupported_assertions = analysis['factual_accuracy']['unsupported_assertions']
+        
+        # Split by newlines and filter out empty lines
+        verified_claims = [line.strip() for line in claim_verification.split('\n') if line.strip()]
+        corrected_claims = [line.strip() for line in unsupported_assertions.split('\n') if line.strip()]
+        
+        # Count only lines that match the expected format
+        verified_count = sum(1 for claim in verified_claims if ': ' in claim)
+        corrected_count = sum(1 for claim in corrected_claims if ': ' in claim)
+        
+        article.verified_claims = verified_count
+        article.corrected_claims = corrected_count
+        
+        article.analysis_sources = json.dumps(analysis.get("sources", []), ensure_ascii=False)
+        article.analyzed_at = datetime.utcnow()
+        article.last_updated_at = datetime.utcnow()
+        
+        # Keep old fields for backward compatibility
+        article.balanced_title = analysis.get("main_facts", "")[:300]  # Truncate to match column size
+        article.balanced_summary = analysis.get("context", "")
+        article.bias_score = 0  # No longer used but keeping for compatibility
+        article.bias_label = "nyanserad"
+        article.bias_explanation = analysis.get("perspectives", "")
+        article.openai_tokens = analysis.get("tokens", 0)
+        
+        # Store the full analysis
+        article.nuanced_perspective = json.dumps(analysis, ensure_ascii=False)
+        
+        sess.commit()
+        sess.close()
+        
+        return jsonify({
+            'success': True,
+            'analysis': analysis,
+            'verified_claims': verified_count,
+            'corrected_claims': corrected_count
+        })
+        
+    except Exception as e:
+        if 'sess' in locals():
+            sess.close()
+        return jsonify({'error': str(e)}), 500
 
 # ----------------------------------------------------------------------
 # Analytics – verification metrics per outlet
 # ----------------------------------------------------------------------
 @app.route("/analytics")
 def analytics():
+    query = request.args.get('q', '').strip()
     sess = Session()
-    rows = (
-        sess.query(
-            Article.site,
-            Article.verified_claims,
-            Article.corrected_claims,
-            Article.nuanced_perspective,
-            Article.analyzed_at
+    
+    if query:
+        # Search in title and summary
+        rows = (
+            sess.query(
+                Article.site,
+                Article.verified_claims,
+                Article.corrected_claims,
+                Article.nuanced_perspective,
+                Article.analyzed_at
+            )
+            .filter(Article.nuanced_perspective.is_not(None))
+            .filter(or_(
+                Article.title.ilike(f'%{query}%'),
+                Article.summary.ilike(f'%{query}%')
+            ))
+            .all()
         )
-        .filter(Article.nuanced_perspective.is_not(None))
-        .all()
-    )
+    else:
+        rows = (
+            sess.query(
+                Article.site,
+                Article.verified_claims,
+                Article.corrected_claims,
+                Article.nuanced_perspective,
+                Article.analyzed_at
+            )
+            .filter(Article.nuanced_perspective.is_not(None))
+            .all()
+        )
     
     # Aggregate per site
     metrics = defaultdict(lambda: {
@@ -128,7 +223,6 @@ def analytics():
         metrics[site]["corrected"] += c or 0
         metrics[site]["total_articles"] += 1
         
-        # Parse analysis JSON to get quality scores
         try:
             analysis = json.loads(analysis_json)
             quality = analysis.get("reporting_quality", {})
@@ -144,7 +238,6 @@ def analytics():
     for site in metrics:
         total = metrics[site]["total_articles"]
         if total > 0:
-            # Scores are already in 0-1 range, just convert to percentage
             metrics[site]["avg_objectivity"] = min(100, max(0, round(metrics[site]["avg_objectivity"] / total, 1)))
             metrics[site]["avg_depth"] = min(100, max(0, round(metrics[site]["avg_depth"] / total, 1)))
             metrics[site]["avg_evidence"] = min(100, max(0, round(metrics[site]["avg_evidence"] / total, 1)))
@@ -171,6 +264,7 @@ def analytics():
         verification_data=payload,
         sites=SITES,
         now=datetime.utcnow(),
+        search_query=query
     )
 
 
@@ -197,6 +291,49 @@ def reset_analytics():
     sess.commit()
     sess.close()
     return ("", 204)
+
+# ---------- fetch news -------------------------------------------------
+@app.post("/api/fetch-news")
+def api_fetch_news():
+    try:
+        # Fetch news from all sources
+        news = collect_news(NEWS_PER_SITE, NEWS_SUMMARY_LEN)
+        sess = Session()
+        
+        # Store new articles
+        for site, items in news.items():
+            for art in items:
+                # Check if article already exists
+                existing = sess.query(Article).filter_by(site=site, url=art["url"]).first()
+                if not existing:
+                    row = Article(
+                        site=site,
+                        title=art["title"],
+                        summary=art["summary"],
+                        url=art["url"],
+                        fetched_at=datetime.utcnow(),
+                        # Initialize new fields as None/0
+                        nuanced_perspective=None,
+                        verified_claims=0,
+                        corrected_claims=0,
+                        analysis_sources=None,
+                        analyzed_at=None,
+                        last_updated_at=None,
+                        # Legacy fields
+                        balanced_title=None,
+                        balanced_summary=None,
+                        bias_score=None,
+                        bias_label=None,
+                        bias_explanation=None,
+                        openai_tokens=0,
+                    )
+                    sess.add(row)
+        
+        sess.commit()
+        sess.close()
+        return jsonify({"status": "ok", "message": "News fetched successfully"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run()

@@ -37,6 +37,13 @@ Din analys ska fokusera på:
    - Notera eventuella logiska felslut eller vilseledande uttalanden
    - Utvärdera källornas trovärdighet
 
+   Viktigt för verifiering:
+   - Lista varje verifierat påstående på en ny rad med format: "PÅSTÅENDE: VERIFIERING"
+   - Lista varje obevisat påstående på en ny rad med format: "PÅSTÅENDE: KORRIGERING"
+   - Var specifik och detaljerad i verifieringarna
+   - Inkludera källor och bevis för verifieringar
+   - Ange tydligt vad som saknas för obevisade påståenden
+
 4. Utvärdera den övergripande kvaliteten på rapporteringen:
    Bedöm varje aspekt på en skala 0-100% där:
    - Objektivitet: Hur väl balanserad och opartisk är rapporteringen?
@@ -56,6 +63,44 @@ Din analys ska fokusera på:
    - Mönster: Specificera exakt vilka historiska mönster som upprepas (med exempel) och vad vi kan lära oss av dem
    - Implikationer: Ge konkreta, kvantifierbara konsekvenser för marknader, allianser eller maktbalanser
    - Principer: Använd specifika principer från Dalio's ramverk (t.ex. "The Changing World Order", "Principles for Dealing with the Changing World Order") för att förklara situationen
+
+6. Ge Elon Musk's perspektiv på nyheten:
+   ENDAST om nyheten är relevant för:
+   - Teknologi och innovation
+   - Politik och geopolitik
+   - Ekonomi och handel
+   - Energi och klimat
+
+   Om nyheten INTE är relevant för dessa områden, lämna elon_musk_perspective tomt.
+
+   När relevant, strukturera analysen i följande format:
+   - Teknologisk synvinkel: Hur påverkar detta teknologisk utveckling och innovation?
+   - Innovationspotential: Vilka möjligheter eller utmaningar skapar detta för teknologisk framsteg?
+   - Framtidsvision: Hur påverkar detta framtidens teknologiska landskap?
+   - Praktisk tillämpning: Vilka konkreta teknologiska lösningar skulle kunna påverkas?
+
+   Viktigt för Musk-perspektivet:
+   - Var specifik och konkret
+   - Fokusera på teknologiska lösningar och innovation
+   - Undvik generella uttalanden
+   - Koppla till hans kända värderingar och tidigare uttalanden
+   - Håll varje sektion till max 2-3 meningar
+   - Använd teknisk terminologi när det är relevant
+   - För geopolitik/ekonomi: Fokusera på hur det påverkar:
+     * Teknologisk samverkan och handel
+     * Innovation och forskning
+     * Framtida teknologiska lösningar
+     * Global teknologisk utveckling
+   - För sport/kultur: Fokusera på:
+     * Teknologisk innovation inom området
+     * Framtida utvecklingsmöjligheter
+     * Teknologiska lösningar för förbättringar
+
+   Exempel för geopolitik:
+   - Teknologisk synvinkel: "Musk skulle se detta som en möjlighet för ökad teknologisk samverkan mellan Kina och Ryssland, särskilt inom AI och rymdteknik."
+   - Innovationspotential: "Detta kan leda till nya innovationsmöjligheter inom elfordon, batteriteknik och satellitkommunikation."
+   - Framtidsvision: "Kan påskynda teknologisk utveckling utanför västvärlden och skapa nya konkurrensförhållanden."
+   - Praktisk tillämping: "Skulle kunna resultera i gemensamma rymdprojekt och delad teknologisk expertis."
 
 Viktigt för Dalio-perspektivet:
 - Undvik generella uttalanden som "speglar spänningar" eller "påverkar maktbalansen"
@@ -98,6 +143,12 @@ Formatera ditt svar som ett JSON-objekt med följande struktur:
         "pattern_identification": "string",
         "long_term_implications": "string",
         "principles_applied": "string"
+    }},
+    "elon_musk_perspective": {{
+        "tech_perspective": "string",
+        "innovation_potential": "string",
+        "future_vision": "string",
+        "practical_application": "string"
     }}
 }}
 
@@ -203,11 +254,12 @@ def analyse_article(article: dict,
                 temperature=0.2,
             )
             raw  = resp.choices[0].message.content
+            log.info("Raw OpenAI response: %s", raw)
             data = json.loads(raw)
+            log.info("Parsed analysis data: %s", json.dumps(data, ensure_ascii=False, indent=2))
             data["tokens"] = resp.usage.total_tokens
             data["content_type"] = content_type  # Add content type to response
             data["model_used"] = model  # Add model info to response
-            log.info("Analysis structure: %s", json.dumps(data, ensure_ascii=False, indent=2))
             return data
         except Exception as e:
             log.warning("OpenAI error (try %d/3): %s", tries, e)
@@ -245,6 +297,12 @@ def analyse_article(article: dict,
             "pattern_identification": None,
             "long_term_implications": None,
             "principles_applied": None
+        },
+        "elon_musk_perspective": {
+            "tech_perspective": None,
+            "innovation_potential": None,
+            "future_vision": None,
+            "practical_application": None
         },
         "tokens": 0,
         "content_type": content_type,

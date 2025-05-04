@@ -14,33 +14,33 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MODELS = {
     "geopolitics": {
         "model": os.getenv("OPENAI_MODEL_GEOPOLITICS", "gpt-4.1"),
-        "max_tokens": int(os.getenv("MAX_TOKENS_GEOPOLITICS", "3000")),
-        "max_words": int(os.getenv("MAX_WORDS_GEOPOLITICS", "200"))
+        "max_tokens": int(os.getenv("MAX_TOKENS_GEOPOLITICS", "4000")),
+        "max_words": int(os.getenv("MAX_WORDS_GEOPOLITICS", "300"))
     },
     "economics": {
         "model": os.getenv("OPENAI_MODEL_ECONOMICS", "gpt-4.1"),
-        "max_tokens": int(os.getenv("MAX_TOKENS_ECONOMICS", "3000")),
-        "max_words": int(os.getenv("MAX_WORDS_ECONOMICS", "200"))
+        "max_tokens": int(os.getenv("MAX_TOKENS_ECONOMICS", "4000")),
+        "max_words": int(os.getenv("MAX_WORDS_ECONOMICS", "300"))
     },
     "policy": {
         "model": os.getenv("OPENAI_MODEL_POLICY", "gpt-4.1"),
-        "max_tokens": int(os.getenv("MAX_TOKENS_POLICY", "3000")),
-        "max_words": int(os.getenv("MAX_WORDS_POLICY", "200"))
+        "max_tokens": int(os.getenv("MAX_TOKENS_POLICY", "4000")),
+        "max_words": int(os.getenv("MAX_WORDS_POLICY", "300"))
     },
     "sports": {
         "model": os.getenv("OPENAI_MODEL_SPORTS", "gpt-4.1-nano"),
-        "max_tokens": int(os.getenv("MAX_TOKENS_SPORTS", "1000")),
-        "max_words": int(os.getenv("MAX_WORDS_SPORTS", "70"))
+        "max_tokens": int(os.getenv("MAX_TOKENS_SPORTS", "2000")),
+        "max_words": int(os.getenv("MAX_WORDS_SPORTS", "150"))
     },
     "culture": {
         "model": os.getenv("OPENAI_MODEL_CULTURE", "gpt-4.1-nano"),
-        "max_tokens": int(os.getenv("MAX_TOKENS_CULTURE", "1000")),
-        "max_words": int(os.getenv("MAX_WORDS_CULTURE", "70"))
+        "max_tokens": int(os.getenv("MAX_TOKENS_CULTURE", "2000")),
+        "max_words": int(os.getenv("MAX_WORDS_CULTURE", "150"))
     },
     "default": {
         "model": os.getenv("OPENAI_MODEL_DEFAULT", "gpt-4.1-mini"),
-        "max_tokens": int(os.getenv("MAX_TOKENS_DEFAULT", "1500")),
-        "max_words": int(os.getenv("MAX_WORDS_DEFAULT", "100"))
+        "max_tokens": int(os.getenv("MAX_TOKENS_DEFAULT", "3000")),
+        "max_words": int(os.getenv("MAX_WORDS_DEFAULT", "200"))
     }
 }
 

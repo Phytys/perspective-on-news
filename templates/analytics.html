@@ -20,6 +20,13 @@
 
   <h1>Kvalitetsanalys</h1>
   <p class="tagline">Översikt av nyhetskvalitet och verifiering per källa</p>
+  
+  <div class="header-actions">
+    <form class="search-form" action="{{ url_for('analytics') }}" method="get">
+      <input type="search" name="q" value="{{ search_query }}" placeholder="Filtrera analyser..." required>
+      <button type="submit">Sök</button>
+    </form>
+  </div>
 </header>
 
 <main style="max-width:900px;margin:0 auto;padding:0 1rem 4rem;">

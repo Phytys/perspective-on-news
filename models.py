@@ -42,6 +42,7 @@ class Article(Base):
     analysis_sources    = Column(Text)         # JSON array of sources
     analyzed_at         = Column(DateTime)     # When the analysis was performed
     last_updated_at     = Column(DateTime)     # When the analysis was last updated
+    elon_musk_perspective = Column(Text)       # Elon Musk's perspective on the news
     
     openai_tokens      = Column(Integer, default=0)       # cost accounting
 

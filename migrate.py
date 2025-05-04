@@ -35,7 +35,8 @@ def migrate():
             corrected_claims INTEGER DEFAULT 0,
             analysis_sources TEXT,
             analyzed_at DATETIME,
-            last_updated_at DATETIME
+            last_updated_at DATETIME,
+            elon_musk_perspective TEXT
         )
         """)
         
@@ -44,6 +45,17 @@ def migrate():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_articles_site ON articles(site)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_articles_url ON articles(url)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_articles_fetched_at ON articles(fetched_at)")
+        
+        # Add elon_musk_perspective column if it doesn't exist
+        logger.info("Adding elon_musk_perspective column if it doesn't exist...")
+        try:
+            cursor.execute("ALTER TABLE articles ADD COLUMN elon_musk_perspective TEXT")
+            logger.info("Added elon_musk_perspective column")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e):
+                logger.info("elon_musk_perspective column already exists")
+            else:
+                raise
         
         # Commit changes
         conn.commit()

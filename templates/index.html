@@ -19,6 +19,17 @@
   
   <h1>Balanced&nbsp;News</h1>
   <p class="tagline">Se nyheten — och hela sammanhanget.</p>
+  
+  <div class="header-actions">
+    <form class="search-form" action="{{ url_for('index_all' if current_site=='all' else 'index_site', site=current_site) }}" method="get">
+      <input type="search" name="q" value="{{ search_query }}" placeholder="Sök i nyheter..." required>
+      <button type="submit">Sök</button>
+    </form>
+  </div>
+  
+  <div class="update-news">
+    <button id="fetchNewsBtn" class="check">Uppdatera nyhetsflödet</button>
+  </div>
 </header>
 
 <main>
@@ -341,6 +352,41 @@
             </div>
         </div>
         {% endif %}
+
+        {% if analysis.elon_musk_perspective and (analysis.elon_musk_perspective.tech_perspective or analysis.elon_musk_perspective.innovation_potential or analysis.elon_musk_perspective.future_vision or analysis.elon_musk_perspective.practical_application) %}
+        <div class="analysis-section">
+            <h3>Elon Musk's Perspektiv</h3>
+            <div class="musk-perspective">
+                {% if analysis.elon_musk_perspective.tech_perspective %}
+                <div class="perspective-item">
+                    <h4>Teknologisk Synvinkel</h4>
+                    <p>{{ analysis.elon_musk_perspective.tech_perspective }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.elon_musk_perspective.innovation_potential %}
+                <div class="perspective-item">
+                    <h4>Innovationspotential</h4>
+                    <p>{{ analysis.elon_musk_perspective.innovation_potential }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.elon_musk_perspective.future_vision %}
+                <div class="perspective-item">
+                    <h4>Framtidsvision</h4>
+                    <p>{{ analysis.elon_musk_perspective.future_vision }}</p>
+                </div>
+                {% endif %}
+                {% if analysis.elon_musk_perspective.practical_application %}
+                <div class="perspective-item">
+                    <h4>Praktisk Tillämpning</h4>
+                    <p>{{ analysis.elon_musk_perspective.practical_application }}</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="dalio-note">
+                <p>Notera: Detta är inte Elon Musk's direkta åsikter utan en analys baserad på hans tidigare uttalanden och värderingar.</p>
+            </div>
+        </div>
+        {% endif %}
       </div>
     {% else %}
       <button class="check" data-id="{{ art.id }}">Få nyanserad bild</button>
@@ -354,17 +400,17 @@
 </footer>
 
 <script>
-document.addEventListener('click', async e => {
-  if (!e.target.matches('button.check')) return;
-  const btn = e.target, id = btn.dataset.id;
+// Add fetch news button handler
+document.getElementById('fetchNewsBtn').onclick = async () => {
+  const btn = document.getElementById('fetchNewsBtn');
   
   // Add loading state
   btn.disabled = true;
   btn.classList.add('analyzing');
-  btn.textContent = 'Analyserar...';
+  btn.textContent = 'Hämtar nyheter...';
   
   try {
-    const r = await fetch(`/api/analyse/${id}`, {method: 'POST'});
+    const r = await fetch('/api/fetch-news', {method: 'POST'});
     if (!r.ok) { 
       btn.textContent = 'Ett fel uppstod';
       btn.classList.remove('analyzing');
@@ -372,7 +418,49 @@ document.addEventListener('click', async e => {
     }
     
     const j = await r.json();
-    if (j.status !== 'ok' && j.status !== 'cached') { 
+    if (j.status !== 'ok') { 
+      btn.textContent = 'Ett fel uppstod';
+      btn.classList.remove('analyzing');
+      return; 
+    }
+    
+    // Reload the page to show new articles
+    location.reload();
+    
+  } catch (error) {
+    btn.textContent = 'Ett fel uppstod';
+    btn.classList.remove('analyzing');
+  }
+};
+
+document.addEventListener('click', async e => {
+  if (!e.target.matches('button.check')) return;
+  const btn = e.target, id = btn.dataset.id;
+  
+  // Skip if it's the fetch news button
+  if (btn.id === 'fetchNewsBtn') return;
+  
+  // Add loading state
+  btn.disabled = true;
+  btn.classList.add('analyzing');
+  btn.textContent = 'Analyserar...';
+  
+  try {
+    const r = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ article_id: id })
+    });
+    if (!r.ok) { 
+      btn.textContent = 'Ett fel uppstod';
+      btn.classList.remove('analyzing');
+      return; 
+    }
+    
+    const j = await r.json();
+    if (!j.success) { 
       btn.textContent = 'Ett fel uppstod';
       btn.classList.remove('analyzing');
       return; 

@@ -537,3 +537,153 @@ nav.tabs a.right {
     background: #222;
   }
 }
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 400px;
+  width: 100%;
+}
+
+.search-form input[type="search"] {
+  flex: 1;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 1rem;
+  background: var(--background);
+  color: var(--text);
+  transition: var(--transition);
+}
+
+.search-form input[type="search"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(62, 106, 225, 0.1);
+}
+
+.search-form button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.6rem;
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 1rem;
+}
+
+.search-form button:hover {
+  background: var(--primary);
+  transform: translateY(-1px);
+}
+
+.update-news {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+#fetchNewsBtn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.6rem;
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 1rem;
+  min-width: 200px;
+}
+
+#fetchNewsBtn:hover {
+  background: var(--primary);
+  transform: translateY(-1px);
+}
+
+#fetchNewsBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+/* Musk perspective */
+.musk-perspective {
+  background: linear-gradient(to bottom right, #f8f9fa, #fff);
+  border-radius: 16px;
+  padding: 2rem;
+  margin: 1.5rem 0;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.musk-perspective::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.musk-perspective:hover::before {
+  transform: translateX(100%);
+}
+
+.musk-perspective .perspective-item {
+  margin-bottom: 1.5rem;
+  padding: 1.2rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: var(--transition);
+}
+
+.musk-perspective .perspective-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px var(--shadow);
+}
+
+.musk-perspective .perspective-item h4 {
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-bottom: 0.8rem;
+  font-weight: 600;
+}
+
+.musk-perspective .perspective-item p {
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* Dark mode support for Musk perspective */
+@media (prefers-color-scheme: dark) {
+  .musk-perspective {
+    background: linear-gradient(to bottom right, #1a1a1a, #222);
+  }
+  
+  .musk-perspective .perspective-item {
+    background: #222;
+  }
+}
