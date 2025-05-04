@@ -141,13 +141,10 @@
         </div>
         {% endif %}
         
-        {% if analysis.content_type or analysis.model_used %}
+        {% if analysis.content_type %}
         <div class="analysis-meta">
           {% if analysis.content_type %}
           <p><strong>Innehållstyp:</strong> {{ analysis.content_type }}</p>
-          {% endif %}
-          {% if analysis.model_used %}
-          <p><strong>Använd modell:</strong> {{ analysis.model_used }}</p>
           {% endif %}
           {% if art.analyzed_at %}
           <p>Analyserad: {{ art.analyzed_at.strftime('%Y-%m-%d %H:%M') }} UTC</p>
@@ -411,14 +408,23 @@ document.getElementById('fetchNewsBtn').onclick = async () => {
   
   try {
     const r = await fetch('/api/fetch-news', {method: 'POST'});
-    if (!r.ok) { 
-      btn.textContent = 'Ett fel uppstod';
+    const j = await r.json();
+    
+    if (r.status === 429) {
+      // Rate limit exceeded - show the message
+      btn.textContent = j.message;
       btn.classList.remove('analyzing');
-      return; 
+      btn.classList.add('rate-limited');
+      // Re-enable the button after 5 seconds
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.classList.remove('rate-limited');
+        btn.textContent = 'Uppdatera nyhetsflödet';
+      }, 5000);
+      return;
     }
     
-    const j = await r.json();
-    if (j.status !== 'ok') { 
+    if (!r.ok || j.status !== 'ok') { 
       btn.textContent = 'Ett fel uppstod';
       btn.classList.remove('analyzing');
       return; 
@@ -494,8 +500,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Extract the percentage value from the text (remove the % sign)
         const value = parseFloat(scoreValue.textContent);
         if (!isNaN(value)) {
-          // Set the width directly on the score-fill element
-          scoreFill.style.width = `${value}%`;
+          // Set the CSS variable based on the score type
+          const scoreType = scoreFill.classList[1]; // objectivity-score, depth-score, etc.
+          const cssVar = scoreType.replace('-score', '');
+          document.documentElement.style.setProperty(`--${cssVar}-score`, `${value}%`);
         }
       }
     });
@@ -515,5 +523,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
+
+<style>
+/* Add styles for rate-limited state */
+#fetchNewsBtn.rate-limited {
+  background: #ff9800;
+  color: white;
+  cursor: not-allowed;
+}
+
+#fetchNewsBtn.rate-limited:hover {
+  background: #ff9800;
+  transform: none;
+}
+</style>
 </body>
 </html>

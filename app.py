@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from collections import defaultdict
 from flask import Flask, render_template, jsonify, abort, request
@@ -9,13 +9,17 @@ from analysis import analyse_article
 from sources  import SITES           # ← dynamic registry
 from config   import MODELS
 from fetch_news import collect_news, NEWS_PER_SITE, NEWS_SUMMARY_LEN  # Import fetch functions
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 import logging
 
 load_dotenv()
 app = Flask(__name__)
 app.config.from_prefixed_env()
 init_db()
+
+# Rate limiting constants
+FETCH_COOLDOWN_MINUTES = 15  # Minimum minutes between fetches
+MAX_FETCHES_PER_DAY = 24     # Maximum fetches per day
 
 # Add custom Jinja filter
 @app.template_filter('from_json')
@@ -30,6 +34,40 @@ def from_json(value):
 # ---------- helper ----------------------------------------------------
 def site_exists(slug: str) -> bool:     # central truth
     return slug in SITES
+
+def check_fetch_limits() -> tuple[bool, str]:
+    """Check if we can fetch news based on rate limits.
+    Returns (can_fetch, message)"""
+    sess = Session()
+    try:
+        # Get the most recent fetch
+        latest_fetch = (
+            sess.query(Article.fetched_at)
+            .order_by(Article.fetched_at.desc())
+            .first()
+        )
+        
+        if latest_fetch:
+            # Check cooldown period
+            cooldown = timedelta(minutes=FETCH_COOLDOWN_MINUTES)
+            if datetime.utcnow() - latest_fetch[0] < cooldown:
+                remaining = cooldown - (datetime.utcnow() - latest_fetch[0])
+                return False, f"Vänta {int(remaining.total_seconds() / 60)} minuter innan nästa uppdatering"
+            
+            # Check daily limit
+            today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+            today_fetches = (
+                sess.query(func.count(Article.id))
+                .filter(Article.fetched_at >= today_start)
+                .scalar()
+            )
+            
+            if today_fetches >= MAX_FETCHES_PER_DAY:
+                return False, f"Maximalt antal uppdateringar ({MAX_FETCHES_PER_DAY}) för idag har nåtts"
+        
+        return True, "OK"
+    finally:
+        sess.close()
 
 # ---------- front page (all) -----------------------------------------
 @app.route("/")
@@ -128,13 +166,18 @@ def api_analyse():
         claim_verification = analysis['factual_accuracy']['claim_verification']
         unsupported_assertions = analysis['factual_accuracy']['unsupported_assertions']
         
-        # Split by newlines and filter out empty lines
-        verified_claims = [line.strip() for line in claim_verification.split('\n') if line.strip()]
-        corrected_claims = [line.strip() for line in unsupported_assertions.split('\n') if line.strip()]
+        # Split by "PÅSTÅENDE:" and filter out empty lines
+        verified_claims = [f"PÅSTÅENDE:{claim.strip()}" for claim in claim_verification.split("PÅSTÅENDE:") if claim.strip()]
+        corrected_claims = [f"PÅSTÅENDE:{claim.strip()}" for claim in unsupported_assertions.split("PÅSTÅENDE:") if claim.strip()]
         
-        # Count only lines that match the expected format
-        verified_count = sum(1 for claim in verified_claims if ': ' in claim)
-        corrected_count = sum(1 for claim in corrected_claims if ': ' in claim)
+        # Count verified claims (must contain both PÅSTÅENDE: and : VERIFIERING)
+        verified_count = sum(1 for claim in verified_claims if ": VERIFIERING" in claim)
+        
+        # Count corrected claims from both fields
+        corrected_count = (
+            sum(1 for claim in verified_claims if ": KORRIGERING" in claim) +
+            sum(1 for claim in corrected_claims if ": KORRIGERING" in claim)
+        )
         
         article.verified_claims = verified_count
         article.corrected_claims = corrected_count
@@ -296,6 +339,11 @@ def reset_analytics():
 @app.post("/api/fetch-news")
 def api_fetch_news():
     try:
+        # Check rate limits
+        can_fetch, message = check_fetch_limits()
+        if not can_fetch:
+            return jsonify({"status": "error", "message": message}), 429
+        
         # Fetch news from all sources
         news = collect_news(NEWS_PER_SITE, NEWS_SUMMARY_LEN)
         sess = Session()
