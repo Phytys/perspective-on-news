@@ -37,3 +37,6 @@ mccabe==0.7.0
 # Production-only Security
 flask-limiter==3.5.0  # Rate limiting (only needed in production)
 flask-cors==4.0.0    # CORS (only needed in production)
+
+# PostgreSQL adapter
+psycopg2-binary==2.9.9
