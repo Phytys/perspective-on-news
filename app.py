@@ -167,16 +167,19 @@ def api_analyse():
         claim_verification = analysis['factual_accuracy']['claim_verification']
         unsupported_assertions = analysis['factual_accuracy']['unsupported_assertions']
         
-        # Count verified claims (must contain both PÅSTÅENDE: and : VERIFIERING)
+        # Count verified claims (must contain both PÅSTÅENDE: and VERIFIERING: with HÖG or MEDEL confidence)
         verified_count = sum(1 for line in claim_verification.split('\n') 
-                           if 'PÅSTÅENDE:' in line and (': VERIFIERING' in line or '– VERIFIERING' in line))
+                           if 'PÅSTÅENDE:' in line and 'VERIFIERING:' in line 
+                           and ('KONFIDENS: HÖG' in line or 'KONFIDENS: MEDEL' in line))
         
-        # Count corrected claims from both fields
+        # Count corrected claims (must contain both PÅSTÅENDE: and KORRIGERING: with non-empty correction)
         corrected_count = (
             sum(1 for line in claim_verification.split('\n') 
-                if 'PÅSTÅENDE:' in line and (': KORRIGERING' in line or '– KORRIGERING' in line)) +
+                if 'PÅSTÅENDE:' in line and 'KORRIGERING:' in line 
+                and not line.split('KORRIGERING:')[1].strip() == '') +
             sum(1 for line in unsupported_assertions.split('\n')
-                if 'PÅSTÅENDE:' in line and (': KORRIGERING' in line or '– KORRIGERING' in line))
+                if 'PÅSTÅENDE:' in line and 'KORRIGERING:' in line 
+                and not line.split('KORRIGERING:')[1].strip() == '')
         )
         
         article.verified_claims = verified_count
