@@ -276,6 +276,19 @@ def main() -> None:
             session.commit()
             log.debug("Saved: %s | %s", site, art["title"][:60])
 
+    # Keep only the 1000 most recent articles
+    try:
+        # Get the ID of the 1000th most recent article
+        oldest_article = session.query(Article.id).order_by(Article.fetched_at.desc()).offset(1000).first()
+        if oldest_article:
+            # Delete all articles older than the 1000th most recent
+            session.query(Article).filter(Article.id < oldest_article[0]).delete()
+            session.commit()
+            log.info("Deleted articles older than the 1000 most recent")
+    except Exception as e:
+        log.error("Error while cleaning up old articles: %s", e)
+        session.rollback()
+
     session.close()
     log.info(
         "Pulled %d headlines | analysed %d | tokens %d (≈ %.2f SEK)",

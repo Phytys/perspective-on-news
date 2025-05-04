@@ -5,6 +5,9 @@ Jinja2==3.1.3
 itsdangerous==2.1.2
 click==8.1.7
 
+# Security
+flask-talisman==1.1.0  # Security headers for both dev and prod
+
 # Database
 SQLAlchemy==2.0.28
 
@@ -30,3 +33,7 @@ flake8==7.0.0
 pycodestyle==2.11.1
 pyflakes==3.2.0
 mccabe==0.7.0
+
+# Production-only Security
+flask-limiter==3.5.0  # Rate limiting (only needed in production)
+flask-cors==4.0.0    # CORS (only needed in production)

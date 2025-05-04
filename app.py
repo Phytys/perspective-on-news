@@ -3,11 +3,14 @@ from datetime import datetime, timedelta
 import json
 from collections import defaultdict
 from flask import Flask, render_template, jsonify, abort, request
+from flask_talisman import Talisman
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from models   import Session, Article, init_db
 from analysis import analyse_article
 from sources  import SITES           # ← dynamic registry
-from config   import MODELS, ADMIN_PASSWORD
+from config   import MODELS, ADMIN_PASSWORD, FLASK_ENV
 from fetch_news import collect_news, NEWS_PER_SITE, NEWS_SUMMARY_LEN  # Import fetch functions
 from sqlalchemy import or_, func
 import logging
@@ -16,6 +19,61 @@ import os
 load_dotenv()
 app = Flask(__name__)
 app.config.from_prefixed_env()
+
+# Basic security headers
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
+
+# Security headers - configured for both dev and prod
+Talisman(app,
+    force_https=FLASK_ENV == 'production',  # Only force HTTPS in production
+    strict_transport_security=FLASK_ENV == 'production',  # Only HSTS in production
+    session_cookie_secure=FLASK_ENV == 'production',  # Only secure cookies in production
+    content_security_policy={
+        'default-src': "'self'",
+        'script-src': "'self' 'unsafe-inline'",
+        'style-src': "'self' 'unsafe-inline'",
+        'img-src': "'self' data: https:",
+        'connect-src': "'self'",
+    },
+    feature_policy={
+        'geolocation': "'none'",
+        'camera': "'none'",
+        'microphone': "'none'",
+    }
+)
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return render_template('500.html'), 500
+
+# Rate limiting - only in production
+if FLASK_ENV == 'production':
+    limiter = Limiter(
+        app=app,
+        key_func=get_remote_address,
+        default_limits=["200 per day", "50 per hour"]
+    )
+
+    # Add rate limits to API endpoints
+    def rate_limit(limit):
+        return limiter.limit(limit)
+else:
+    # Dummy decorator for development
+    def rate_limit(limit):
+        def decorator(f):
+            return f
+        return decorator
+
 init_db()
 
 # Rate limiting constants
@@ -139,6 +197,7 @@ def index_site(site: str):
 
 # ---------- analyse one article --------------------------------------
 @app.route('/api/analyse', methods=['POST'])
+@rate_limit("30 per hour")
 def api_analyse():
     try:
         data = request.get_json()
@@ -316,6 +375,7 @@ def analytics():
 
 # ---------- dev reset -------------------------------------------------
 @app.post("/reset-analytics")
+@rate_limit("5 per hour")
 def reset_analytics():
     sess = Session()
     sess.query(Article).update({
@@ -339,6 +399,7 @@ def reset_analytics():
     return ("", 204)
 
 @app.post("/reset-all")
+@rate_limit("3 per hour")
 def reset_all():
     # Get password from request
     data = request.get_json()
@@ -362,6 +423,7 @@ def reset_all():
 
 # ---------- fetch news -------------------------------------------------
 @app.post("/api/fetch-news")
+@rate_limit("10 per hour")
 def api_fetch_news():
     try:
         # Check rate limits
