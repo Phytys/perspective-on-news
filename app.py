@@ -166,17 +166,16 @@ def api_analyse():
         claim_verification = analysis['factual_accuracy']['claim_verification']
         unsupported_assertions = analysis['factual_accuracy']['unsupported_assertions']
         
-        # Split by "PÅSTÅENDE:" and filter out empty lines
-        verified_claims = [f"PÅSTÅENDE:{claim.strip()}" for claim in claim_verification.split("PÅSTÅENDE:") if claim.strip()]
-        corrected_claims = [f"PÅSTÅENDE:{claim.strip()}" for claim in unsupported_assertions.split("PÅSTÅENDE:") if claim.strip()]
-        
         # Count verified claims (must contain both PÅSTÅENDE: and : VERIFIERING)
-        verified_count = sum(1 for claim in verified_claims if ": VERIFIERING" in claim)
+        verified_count = sum(1 for line in claim_verification.split('\n') 
+                           if 'PÅSTÅENDE:' in line and (': VERIFIERING' in line or '– VERIFIERING' in line))
         
         # Count corrected claims from both fields
         corrected_count = (
-            sum(1 for claim in verified_claims if ": KORRIGERING" in claim) +
-            sum(1 for claim in corrected_claims if ": KORRIGERING" in claim)
+            sum(1 for line in claim_verification.split('\n') 
+                if 'PÅSTÅENDE:' in line and (': KORRIGERING' in line or '– KORRIGERING' in line)) +
+            sum(1 for line in unsupported_assertions.split('\n')
+                if 'PÅSTÅENDE:' in line and (': KORRIGERING' in line or '– KORRIGERING' in line))
         )
         
         article.verified_claims = verified_count
@@ -331,6 +330,14 @@ def reset_analytics():
         Article.last_updated_at: None,
         Article.openai_tokens: 0
     })
+    sess.commit()
+    sess.close()
+    return ("", 204)
+
+@app.post("/reset-all")
+def reset_all():
+    sess = Session()
+    sess.query(Article).delete()
     sess.commit()
     sess.close()
     return ("", 204)

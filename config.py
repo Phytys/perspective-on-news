@@ -49,7 +49,7 @@ ANALYSE_LIMIT = int(os.getenv("ANALYSE_LIMIT", "1"))  # Default articles to anal
 
 # News fetching settings
 NEWS_PER_SITE = int(os.getenv("NEWS_PER_SITE", "10"))  # Headlines to fetch per site
-NEWS_SUMMARY_LEN = int(os.getenv("NEWS_SUMMARY_LEN", "70"))  # Max words in news summary
+NEWS_SUMMARY_LEN = int(os.getenv("NEWS_SUMMARY_LEN", "200"))  # Max words in news summary
 
 # Database settings
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///balanced_news.db")

@@ -29,6 +29,7 @@
   
   <div class="update-news">
     <button id="fetchNewsBtn" class="check">Uppdatera nyhetsflödet</button>
+    <button id="resetAllBtn" class="check" style="background: #dc3545;">Rensa alla nyheter</button>
   </div>
 </header>
 
@@ -436,6 +437,26 @@ document.getElementById('fetchNewsBtn').onclick = async () => {
   } catch (error) {
     btn.textContent = 'Ett fel uppstod';
     btn.classList.remove('analyzing');
+  }
+};
+
+// Add reset all button handler
+document.getElementById('resetAllBtn').onclick = async () => {
+  if (!confirm('Är du säker på att du vill ta bort alla nyheter?')) return;
+  
+  const btn = document.getElementById('resetAllBtn');
+  btn.disabled = true;
+  btn.textContent = 'Rensar...';
+  
+  try {
+    const r = await fetch('/reset-all', {method: 'POST'});
+    if (!r.ok) {
+      btn.textContent = 'Ett fel uppstod';
+      return;
+    }
+    location.reload();
+  } catch (error) {
+    btn.textContent = 'Ett fel uppstod';
   }
 };
 
