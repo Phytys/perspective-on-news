@@ -58,4 +58,7 @@ if DATABASE_URL.startswith("postgres://"):
 
 # Flask settings
 FLASK_ENV = os.getenv("FLASK_ENV", "development")
-SECRET_KEY = os.getenv("SECRET_KEY", "dev") 
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+# Admin settings
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # Required for admin actions 

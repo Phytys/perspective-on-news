@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 from models   import Session, Article, init_db
 from analysis import analyse_article
 from sources  import SITES           # ← dynamic registry
-from config   import MODELS
+from config   import MODELS, ADMIN_PASSWORD
 from fetch_news import collect_news, NEWS_PER_SITE, NEWS_SUMMARY_LEN  # Import fetch functions
 from sqlalchemy import or_, func
 import logging
+import os
 
 load_dotenv()
 app = Flask(__name__)
@@ -336,6 +337,20 @@ def reset_analytics():
 
 @app.post("/reset-all")
 def reset_all():
+    # Get password from request
+    data = request.get_json()
+    if not data or 'password' not in data:
+        return jsonify({'error': 'Password required'}), 401
+    
+    # Check if admin password is configured
+    if not ADMIN_PASSWORD:
+        return jsonify({'error': 'Admin password not configured'}), 500
+    
+    # Check password
+    if data['password'] != ADMIN_PASSWORD:
+        return jsonify({'error': 'Invalid password'}), 401
+    
+    # If password is correct, proceed with reset
     sess = Session()
     sess.query(Article).delete()
     sess.commit()

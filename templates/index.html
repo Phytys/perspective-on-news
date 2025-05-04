@@ -444,16 +444,34 @@ document.getElementById('fetchNewsBtn').onclick = async () => {
 document.getElementById('resetAllBtn').onclick = async () => {
   if (!confirm('Är du säker på att du vill ta bort alla nyheter?')) return;
   
+  const password = prompt('Ange administratörslösenord:');
+  if (!password) return;
+  
   const btn = document.getElementById('resetAllBtn');
   btn.disabled = true;
   btn.textContent = 'Rensar...';
   
   try {
-    const r = await fetch('/reset-all', {method: 'POST'});
+    const r = await fetch('/reset-all', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password })
+    });
+    
+    if (r.status === 401) {
+      alert('Felaktigt lösenord');
+      btn.textContent = 'Rensa alla nyheter';
+      btn.disabled = false;
+      return;
+    }
+    
     if (!r.ok) {
       btn.textContent = 'Ett fel uppstod';
       return;
     }
+    
     location.reload();
   } catch (error) {
     btn.textContent = 'Ett fel uppstod';
