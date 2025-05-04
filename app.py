@@ -35,7 +35,7 @@ Talisman(app,
     session_cookie_secure=FLASK_ENV == 'production',  # Only secure cookies in production
     content_security_policy={
         'default-src': "'self'",
-        'script-src': "'self' 'unsafe-inline'",
+        'script-src': "'self' 'unsafe-inline' https://cdn.jsdelivr.net",
         'style-src': "'self' 'unsafe-inline'",
         'img-src': "'self' data: https:",
         'connect-src': "'self'",
@@ -50,11 +50,15 @@ Talisman(app,
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
-    return render_template('404.html'), 404
+    return render_template('404.html', 
+                         sites=SITES,
+                         now=datetime.utcnow()), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return render_template('500.html'), 500
+    return render_template('500.html', 
+                         sites=SITES,
+                         now=datetime.utcnow()), 500
 
 # Rate limiting - only in production
 if FLASK_ENV == 'production':
@@ -312,6 +316,9 @@ def analytics():
             .all()
         )
     
+    # Debug: Print raw data
+    print("Raw rows:", rows)
+    
     # Aggregate per site
     metrics = defaultdict(lambda: {
         "verified": 0,
@@ -336,7 +343,8 @@ def analytics():
                 metrics[site]["avg_depth"] += quality.get("depth_score", 0) or 0
                 metrics[site]["avg_evidence"] += quality.get("evidence_score", 0) or 0
                 metrics[site]["avg_clarity"] += quality.get("clarity_score", 0) or 0
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError) as e:
+            print(f"Error parsing analysis for {site}:", e)
             continue
 
     # Calculate averages
@@ -362,6 +370,10 @@ def analytics():
         "corrected": c_data,
         "metrics": {site: data for site, data in metrics.items()}
     }
+    
+    # Debug: Print final payload
+    print("Final payload:", json.dumps(payload, indent=2))
+    
     sess.close()
 
     return render_template(
@@ -374,29 +386,28 @@ def analytics():
 
 
 # ---------- dev reset -------------------------------------------------
-@app.post("/reset-analytics")
-@rate_limit("5 per hour")
+@app.route('/reset-analytics', methods=['POST'])
 def reset_analytics():
-    sess = Session()
-    sess.query(Article).update({
-        # Old fields
-        Article.balanced_title: None,
-        Article.balanced_summary: None,
-        Article.bias_score: None,
-        Article.bias_label: None,
-        Article.bias_explanation: None,
-        # New fields
-        Article.nuanced_perspective: None,
-        Article.verified_claims: 0,
-        Article.corrected_claims: 0,
-        Article.analysis_sources: None,
-        Article.analyzed_at: None,
-        Article.last_updated_at: None,
-        Article.openai_tokens: 0
-    })
-    sess.commit()
-    sess.close()
-    return ("", 204)
+    data = request.get_json()
+    if not data or 'password' not in data or data['password'] != ADMIN_PASSWORD:
+        return jsonify({'error': 'Invalid password'}), 401
+        
+    try:
+        # Reset all analysis data
+        sess = Session()
+        sess.query(Article).update({
+            'nuanced_perspective': None,
+            'analyzed_at': None,
+            'last_updated_at': None,
+            'verified_claims': 0,
+            'corrected_claims': 0
+        })
+        sess.commit()
+        sess.close()
+        return jsonify({'status': 'ok'})
+    except Exception as e:
+        sess.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.post("/reset-all")
 @rate_limit("3 per hour")

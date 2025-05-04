@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 
+{% block title %}500 - Serverfel{% endblock %}
+
+{% block header %}500 - Serverfel{% endblock %}
+
+{% block tagline %}Ett oväntat fel har inträffat.{% endblock %}
+
 {% block content %}
-<div class="error-container">
-    <h1>500 - Serverfel</h1>
-    <p>Ett oväntat fel har inträffat. Vi arbetar på att lösa problemet.</p>
-    <a href="/" class="button">Gå till startsidan</a>
+<div style="text-align:center;padding:4rem 1rem;">
+  <p>Vi arbetar på att lösa problemet. Försök igen senare eller gå tillbaka till <a href="/">startsidan</a>.</p>
 </div>
 {% endblock %} 

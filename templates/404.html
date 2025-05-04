@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 
+{% block title %}404 - Sidan hittades inte{% endblock %}
+
+{% block header %}404 - Sidan hittades inte{% endblock %}
+
+{% block tagline %}Sidan du letar efter finns inte.{% endblock %}
+
 {% block content %}
-<div class="error-container">
-    <h1>404 - Sidan hittades inte</h1>
-    <p>Tyvärr kunde vi inte hitta sidan du letar efter.</p>
-    <a href="/" class="button">Gå till startsidan</a>
+<div style="text-align:center;padding:4rem 1rem;">
+  <p>Kontrollera att du har skrivit in adressen korrekt eller gå tillbaka till <a href="/">startsidan</a>.</p>
 </div>
 {% endblock %} 

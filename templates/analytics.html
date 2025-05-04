@@ -1,40 +1,33 @@
-<!doctype html>
-<html lang="sv">
-<head>
-<meta charset="utf-8">
-<title>Perspektiv på nyheter – Analys</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "base.html" %}
+
+{% block title %}Perspektiv på nyheter – Analys{% endblock %}
+
+{% block head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-<header>
-  <nav class="tabs">
-    <a href="/" class="{{ 'on' if current_site=='all' else '' }}">Alla</a>
-    {% for slug, meta in sites.items() %}
-      <a href="/site/{{ slug }}"
-         class="{{ 'on' if current_site==slug else '' }}">{{ meta.name }}</a>
-    {% endfor %}
-    <a href="/analytics" class="right">Analys&nbsp;📈</a>
-  </nav>
+{% endblock %}
 
-  <h1>Kvalitetsanalys</h1>
-  <p class="tagline">Översikt av nyhetskvalitet och verifiering per källa</p>
-  
-  <div class="header-actions">
-    <form class="search-form" action="{{ url_for('analytics') }}" method="get">
-      <input type="search" name="q" value="{{ search_query }}" placeholder="Filtrera analyser..." required>
-      <button type="submit">Sök</button>
-    </form>
+{% block header %}Kvalitetsanalys{% endblock %}
+
+{% block tagline %}Översikt av nyhetskvalitet och verifiering per källa{% endblock %}
+
+{% block header_actions %}
+<div class="header-actions">
+  <form class="search-form" action="{{ url_for('analytics') }}" method="get">
+    <input type="search" name="q" value="{{ search_query }}" placeholder="Filtrera analyser..." required>
+    <button type="submit">Sök</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto;padding:0 1rem 4rem;">
+  <div style="height:400px;margin-bottom:2rem;">
+    <canvas id="verificationChart"></canvas>
   </div>
-</header>
-
-<main style="max-width:900px;margin:0 auto;padding:0 1rem 4rem;">
-  <canvas id="verificationChart" height="280" style="display:none;"></canvas>
   <p id="nodata" style="text-align:center;color:#666;margin:4rem 0;">Ingen analysdata tillgänglig än. 
      Analysera minst en artikel för att se diagrammet.</p>
 
-  <div id="metrics" style="display:none;margin-top:2rem;">
+  <div id="metrics" style="margin-top:2rem;">
     <h2>Detaljerad analys per källa</h2>
     <div class="metrics-grid">
       {% for slug, meta in sites.items() %}
@@ -84,12 +77,10 @@
 
   <h2 style="margin-top:3rem;">Återställ data</h2>
   <button id="resetBtn">Återställ all analysdata</button>
-</main>
+</div>
+{% endblock %}
 
-<footer>
-  <small>Uppdaterad {{ now.strftime("%Y-%m-%d %H:%M UTC") }}</small>
-</footer>
-
+{% block scripts %}
 <!-- JSON payload rendered by Flask -->
 <script id="verification-data" type="application/json">{{ verification_data|tojson }}</script>
 
@@ -98,12 +89,12 @@
   const payload = JSON.parse(document.getElementById('verification-data').textContent);
   const { labels=[], verified=[], corrected=[], metrics={} } = payload || {};
 
-  if (labels.length) {
-    // we have data – hide message & show charts
-    document.getElementById('nodata').style.display = 'none';
-    document.getElementById('verificationChart').style.display = 'block';
-    document.getElementById('metrics').style.display = 'block';
+  // Show/hide elements based on data availability
+  const hasData = labels.length > 0 && (verified.length > 0 || corrected.length > 0);
+  document.getElementById('nodata').style.display = hasData ? 'none' : 'block';
+  document.getElementById('metrics').style.display = hasData ? 'block' : 'none';
 
+  if (hasData) {
     // Set score bar widths using CSS variables
     Object.entries(metrics).forEach(([slug, data]) => {
       const card = document.querySelector(`.metric-card[data-site="${slug}"]`);
@@ -115,67 +106,116 @@
       }
     });
 
-    new Chart(document.getElementById('verificationChart'), {
-      type: 'bar',
-      data: {
-        labels,
-        datasets:[
-          { 
-            label: 'Verifierade påståenden',
-            data: verified,
-            backgroundColor: '#4CAF50'
-          },
-          {
-            label: 'Korrigerade påståenden',
-            data: corrected,
-            backgroundColor: '#FFC107'
-          }
-        ]
-      },
-      options: {
-        scales: { 
-          y: { 
-            beginAtZero: true,
-            grid: { color: '#ccc' },
-            title: {
-              display: true,
-              text: 'Antal påståenden'
+    try {
+      // Initialize chart
+      const ctx = document.getElementById('verificationChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { 
+              label: 'Verifierade påståenden',
+              data: verified,
+              backgroundColor: '#4CAF50'
+            },
+            {
+              label: 'Korrigerade påståenden',
+              data: corrected,
+              backgroundColor: '#FFC107'
             }
-          },
-          x: {
-            title: {
-              display: true,
-              text: 'Nyhetskälla'
-            }
-          }
+          ]
         },
-        plugins: {
-          legend: { 
-            display: true,
-            position: 'top'
-          },
-          tooltip: {
-            callbacks: {
-              label: (c) => `${c.dataset.label}: ${c.parsed.y}`
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: {
+              top: 20,
+              right: 20,
+              bottom: 20,
+              left: 20
             }
           },
-          title: {
-            display: true,
-            text: 'Verifiering av påståenden per nyhetskälla',
-            font: {
-              size: 16
+          scales: { 
+            y: { 
+              beginAtZero: true,
+              grid: { color: '#ccc' },
+              title: {
+                display: true,
+                text: 'Antal påståenden'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Nyhetskälla'
+              }
+            }
+          },
+          plugins: {
+            legend: { 
+              display: true,
+              position: 'top'
+            },
+            tooltip: {
+              callbacks: {
+                label: (c) => `${c.dataset.label}: ${c.parsed.y}`
+              }
+            },
+            title: {
+              display: true,
+              text: 'Verifiering av påståenden per nyhetskälla',
+              font: {
+                size: 16
+              }
             }
           }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error initializing chart:', error);
+      document.getElementById('nodata').textContent = 'Ett fel uppstod vid visning av diagrammet.';
+      document.getElementById('nodata').style.display = 'block';
+    }
   }
 
   // dev-only reset button
   document.getElementById('resetBtn').onclick = async ()=>{
     if(!confirm('Är du säker på att du vill ta bort all analysdata?')) return;
-    await fetch('/reset-analytics', {method:'POST'});
-    location.reload();
+    
+    const password = prompt('Ange administratörslösenord:');
+    if (!password) return;
+    
+    const btn = document.getElementById('resetBtn');
+    btn.disabled = true;
+    btn.textContent = 'Återställer...';
+    
+    try {
+      const r = await fetch('/reset-analytics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      });
+      
+      if (r.status === 401) {
+        alert('Felaktigt lösenord');
+        btn.textContent = 'Återställ all analysdata';
+        btn.disabled = false;
+        return;
+      }
+      
+      if (!r.ok) {
+        btn.textContent = 'Ett fel uppstod';
+        return;
+      }
+      
+      location.reload();
+    } catch (error) {
+      btn.textContent = 'Ett fel uppstod';
+    }
   };
 </script>
 
@@ -255,5 +295,4 @@
   margin-top: 0.2rem;
 }
 </style>
-</body>
-</html>
+{% endblock %}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}Perspektiv på nyheter{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header>
+  <nav class="tabs">
+    <a href="/" class="{{ 'on' if current_site=='all' else '' }}">Alla</a>
+    {% for slug, meta in sites.items() %}
+      <a href="/site/{{ slug }}"
+         class="{{ 'on' if current_site==slug else '' }}">{{ meta.name }}</a>
+    {% endfor %}
+    <a href="/analytics" class="right">Analys&nbsp;📈</a>
+    <a href="/about" class="right">Om</a>
+  </nav>
+
+  <h1>{% block header %}Perspektiv på nyheter{% endblock %}</h1>
+  <p class="tagline">{% block tagline %}Se nyheten — och sammanhanget.{% endblock %}</p>
+  
+  {% block header_actions %}{% endblock %}
+</header>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <small>Uppdaterad {{ now.strftime("%Y-%m-%d %H:%M UTC") }}</small>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html> 
