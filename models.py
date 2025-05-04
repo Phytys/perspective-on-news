@@ -21,7 +21,7 @@ Session = sessionmaker(bind=engine)
 
 
 class Article(Base):
-    __tablename__ = "articles"
+    __tablename__ = "balanced_news_articles"
 
     id          = Column(Integer, primary_key=True)
     site        = Column(String,  nullable=False)      # svt / aftonbladet / expressen
@@ -46,7 +46,7 @@ class Article(Base):
     
     openai_tokens      = Column(Integer, default=0)       # cost accounting
 
-    __table_args__ = (UniqueConstraint("site", "url", name="uix_site_url"),)
+    __table_args__ = (UniqueConstraint("site", "url", name="uix_balanced_news_site_url"),)
 
 
 def init_db() -> None:
