@@ -4,22 +4,43 @@
 
 A news aggregator that fetches headlines from Swedish news sources, analyzes them for bias using OpenAI, and presents balanced perspectives to readers.
 
+## How It Works
+
+1. **News Collection**
+   - Automatically fetches latest headlines from multiple Swedish news sources
+   - Stores articles in a SQLite database
+   - Implements rate limiting to prevent excessive API calls
+   - Supports manual and scheduled updates
+
+2. **AI Analysis**
+   - Uses OpenAI's GPT models to analyze each article
+   - Provides multiple perspectives on the news
+   - Verifies factual claims
+   - Assesses source credibility
+   - Generates quality metrics
+
+3. **User Interface**
+   - Clean, responsive design
+   - Article filtering by source
+   - Search functionality
+   - Interactive analysis display
+   - Analytics dashboard
+
 ## Features
 
+### News Aggregation
 - Fetches latest headlines from multiple Swedish news sources
-- Uses OpenAI to analyze bias and provide balanced rewrites
-- Simple, clean UI inspired by Steve Jobs' design philosophy
-- Bias analytics dashboard
-- Caches analysis results to minimize API costs
-- Comprehensive quality metrics for news reporting
+- Automatic updates every 15 minutes (configurable)
+- Rate limiting to prevent API abuse
+- Search functionality across titles and summaries
 
-## Analysis Components
-
-### Core Analysis
+### AI-Powered Analysis
 - Bias detection and analysis
 - Balanced perspective generation
 - Factual accuracy verification
 - Source credibility assessment
+- Historical context and implications
+- Special analysis for economic/geopolitical news using Ray Dalio's principles
 
 ### Quality Metrics
 Each article is evaluated on a 0-100% scale for:
@@ -28,12 +49,11 @@ Each article is evaluated on a 0-100% scale for:
 - **Evidence**: How well are claims supported with facts and sources?
 - **Clarity**: How effectively is the information communicated?
 
-### Ray Dalio Perspective
-For geopolitics and economics articles, includes:
-- Cycle analysis: Current phase in economic/geopolitical cycles
-- Pattern identification: Historical parallels and lessons
-- Long-term implications: Quantifiable consequences
-- Applied principles: Specific Dalio framework applications
+### Analytics Dashboard
+- Overview of news source quality
+- Verification statistics
+- Quality score trends
+- Source comparison metrics
 
 ## Supported News Sources
 
@@ -43,10 +63,37 @@ For geopolitics and economics articles, includes:
 - Dagens Nyheter
 - Dagens
 
+## Technical Details
+
+### Architecture
+- Flask web application
+- SQLite database (PostgreSQL supported for production)
+- OpenAI API integration
+- Rate-limited news fetching
+- Caching system for analysis results
+
+### Key Components
+- `app.py`: Main Flask application and API endpoints
+- `fetch_news.py`: News collection and batch analysis
+- `analysis.py`: OpenAI API wrapper and analysis logic
+- `models.py`: Database schema and models
+- `sources.py`: News source configurations
+- `config.py`: Application settings
+
+### API Endpoints
+- `/`: Main page with all articles
+- `/site/<site>`: Articles from specific source
+- `/analytics`: Analytics dashboard
+- `/api/analyse`: Trigger analysis for an article
+- `/api/fetch-news`: Manual news update
+- `/reset-analytics`: Reset analytics data
+- `/reset-all`: Reset all data (requires admin password)
+
 ## Prerequisites
 
 - Python 3.9+
-- OpenAI API key (`sk-...`)
+- OpenAI API key
+- SQLite (included) or PostgreSQL
 
 ## Installation
 
@@ -95,6 +142,8 @@ The following environment variables can be set in `.env`:
 |-----|-------------|---------|
 | `NEWS_PER_SITE` | Headlines to fetch per site | 10 |
 | `NEWS_SUMMARY_LEN` | Max words in news summary | 70 |
+| `FETCH_COOLDOWN_MINUTES` | Minutes between fetches | 15 |
+| `MAX_FETCHES_PER_DAY` | Maximum daily fetches | 24 |
 
 ### Database Settings
 | Key | Description | Default |
@@ -106,21 +155,9 @@ The following environment variables can be set in `.env`:
 |-----|-------------|---------|
 | `FLASK_ENV` | Environment | development |
 | `SECRET_KEY` | Random string for Flask sessions | dev |
+| `ADMIN_PASSWORD` | Password for admin functions | - |
 
 ## Usage
-
-### Fetching News
-
-```bash
-# Fetch headlines only (no OpenAI cost)
-python fetch_news.py --news-len 60
-
-# Fetch and analyze headlines
-python fetch_news.py --analyse --balanced-len 60 --max-tokens 400
-
-# Customize number of articles to analyze
-python fetch_news.py --analyse --analyse-limit 3
-```
 
 ### Running the Web Interface
 
@@ -137,48 +174,14 @@ Add to crontab for automatic updates:
 */15 * * * * cd /path/to/balanced_news && python fetch_news.py >> logs/cron.log 2>&1
 ```
 
-## Project Structure
-
-```
-balanced_news/
-├── app.py              # Flask UI + API endpoints
-├── fetch_news.py       # News fetching + batch analysis
-├── analysis.py         # OpenAI API wrapper
-├── models.py          # Database schema
-├── sources.py         # News source configurations
-├── config.py          # Configuration settings
-├── requirements.txt
-├── .env.example
-├── templates/
-│   ├── index.html     # Main page template
-│   └── analytics.html # Analytics dashboard
-└── static/
-    └── style.css      # Minimal styling
-```
-
-## Analysis Methodology
-
-### Quality Assessment
-Articles are evaluated on a 0-100% scale with the following criteria:
-- 0-20%: Severe deficiencies, misleading or missing basic elements
-- 21-40%: Significant issues, superficial or one-sided
-- 41-60%: Acceptable but with clear areas for improvement
-- 61-80%: Good quality with minor issues
-- 81-100%: Excellent, well-balanced and thorough
-
-### Ray Dalio Framework
-The system applies Dalio's principles to analyze geopolitical and economic news:
-- Identifies current cycle phases
-- Draws historical parallels
-- Provides quantifiable implications
-- Applies specific principles from Dalio's works
-
 ## Development
 
 - Uses SQLite for local development
 - Supports PostgreSQL for production
 - Zero JavaScript frameworks
 - Minimal, responsive design
+- Dark mode support
+- Mobile-first approach
 
 ## License
 
