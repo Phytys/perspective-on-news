@@ -66,7 +66,8 @@ if FLASK_ENV == 'production':
         app=app,
         key_func=get_remote_address,
         default_limits=["200 per day", "50 per hour"],
-        storage_uri=os.getenv("REDIS_URL")  # Use Redis for rate limiting in production
+        storage_uri=os.getenv("REDIS_URL"),
+        storage_options={"ssl_cert_reqs": None}  # Disable SSL verification for Heroku Redis
     )
 
     # Add rate limits to API endpoints
