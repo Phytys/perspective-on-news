@@ -11,6 +11,7 @@ flask-talisman==1.1.0  # Security headers for both dev and prod
 
 # Database
 SQLAlchemy==2.0.28
+redis==5.0.1  # Required for rate limiting with Redis
 
 # News Processing
 feedparser==6.0.11
