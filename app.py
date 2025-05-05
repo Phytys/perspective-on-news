@@ -66,7 +66,7 @@ if FLASK_ENV == 'production':
         app=app,
         key_func=get_remote_address,
         default_limits=["200 per day", "50 per hour"],
-        storage_uri=os.getenv("REDIS_URL")  # Use Redis for rate limiting
+        storage_uri=os.getenv("REDIS_URL")  # Use Redis for rate limiting in production
     )
 
     # Add rate limits to API endpoints
