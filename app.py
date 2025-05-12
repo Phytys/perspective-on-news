@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from models   import Session, Article, init_db
 from analysis import analyse_article
 from sources  import SITES           # ← dynamic registry
-from config   import MODELS, ADMIN_PASSWORD, FLASK_ENV
+from config   import MODELS, ADMIN_PASSWORD, FLASK_ENV, config  # Add config import
 from fetch_news import collect_news, NEWS_PER_SITE, NEWS_SUMMARY_LEN  # Import fetch functions
 from sqlalchemy import or_, func
 import logging
@@ -163,7 +163,7 @@ def index_all():
     sess.close()
     return render_template("index.html",
         sites=SITES, current_site="all", articles=arts,
-        now=datetime.utcnow(), search_query=query)
+        now=datetime.utcnow(), search_query=query, config=config)
 
 # ---------- front page (single) --------------------------------------
 @app.route("/site/<site>")
@@ -199,7 +199,7 @@ def index_site(site: str):
     sess.close()
     return render_template("index.html",
         sites=SITES, current_site=site, articles=arts,
-        now=datetime.utcnow(), search_query=query)
+        now=datetime.utcnow(), search_query=query, config=config)
 
 # ---------- analyse one article --------------------------------------
 @app.route('/api/analyse', methods=['POST'])

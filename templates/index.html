@@ -30,7 +30,9 @@
   
   <div class="update-news">
     <button id="fetchNewsBtn" class="check">Uppdatera nyhetsflödet</button>
+    {% if config.FLASK_ENV == 'development' %}
     <button id="resetAllBtn" class="check" style="background: #dc3545;">Rensa alla nyheter</button>
+    {% endif %}
   </div>
 </header>
 

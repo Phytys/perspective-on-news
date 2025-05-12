@@ -62,3 +62,16 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Admin settings
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # Required for admin actions 
+
+# Export all config variables as a dict
+config = {
+    "FLASK_ENV": FLASK_ENV,
+    "SECRET_KEY": SECRET_KEY,
+    "DATABASE_URL": DATABASE_URL,
+    "NEWS_PER_SITE": NEWS_PER_SITE,
+    "NEWS_SUMMARY_LEN": NEWS_SUMMARY_LEN,
+    "ANALYSE_LIMIT": ANALYSE_LIMIT,
+    "MODELS": MODELS,
+    "OPENAI_API_KEY": OPENAI_API_KEY,
+    "ADMIN_PASSWORD": ADMIN_PASSWORD
+} 
