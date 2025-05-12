@@ -509,10 +509,12 @@ document.addEventListener('click', async e => {
   // Skip if it's the fetch news button
   if (btn.id === 'fetchNewsBtn') return;
   
-  // Add loading state
-  btn.disabled = true;
-  btn.classList.add('analyzing');
-  btn.textContent = 'Analyserar...';
+  // Immediately update button state for instant feedback
+  requestAnimationFrame(() => {
+    btn.disabled = true;
+    btn.classList.add('analyzing');
+    btn.textContent = 'Analyserar...';
+  });
   
   try {
     const r = await fetch('/api/analyse', {
@@ -522,16 +524,61 @@ document.addEventListener('click', async e => {
       },
       body: JSON.stringify({ article_id: id })
     });
-    if (!r.ok) { 
-      btn.textContent = 'Ett fel uppstod';
+    
+    const j = await r.json();
+    
+    if (r.status === 429) {
+      // Rate limit exceeded
+      btn.textContent = j.message || 'För många förfrågningar, försök igen senare';
       btn.classList.remove('analyzing');
+      btn.classList.add('rate-limited');
+      // Re-enable after retry_after seconds, or default to 5 minutes
+      const retryAfter = j.retry_after || 300;
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.classList.remove('rate-limited');
+        btn.textContent = 'Få nyanserad bild';
+      }, retryAfter * 1000);
+      return;
+    }
+    
+    if (r.status === 503) {
+      // Service unavailable (Redis error)
+      btn.textContent = j.message || 'Tjänsten är tillfälligt otillgänglig';
+      btn.classList.remove('analyzing');
+      btn.classList.add('error');
+      // Re-enable after 30 seconds
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.classList.remove('error');
+        btn.textContent = 'Få nyanserad bild';
+      }, 30000);
+      return;
+    }
+    
+    if (!r.ok) { 
+      btn.textContent = j.message || 'Ett fel uppstod';
+      btn.classList.remove('analyzing');
+      btn.classList.add('error');
+      // Re-enable after 5 seconds
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.classList.remove('error');
+        btn.textContent = 'Få nyanserad bild';
+      }, 5000);
       return; 
     }
     
-    const j = await r.json();
     if (!j.success) { 
-      btn.textContent = 'Ett fel uppstod';
+      btn.textContent = j.message || 'Ett fel uppstod';
       btn.classList.remove('analyzing');
+      btn.classList.add('error');
+      // Re-enable after 5 seconds
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.classList.remove('error');
+        btn.textContent = 'Få nyanserad bild';
+      }, 5000);
       return; 
     }
     
@@ -543,8 +590,16 @@ document.addEventListener('click', async e => {
     setTimeout(() => location.reload(), 500);
     
   } catch (error) {
+    console.error('Error during analysis:', error);
     btn.textContent = 'Ett fel uppstod';
     btn.classList.remove('analyzing');
+    btn.classList.add('error');
+    // Re-enable after 5 seconds
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.classList.remove('error');
+      btn.textContent = 'Få nyanserad bild';
+    }, 5000);
   }
 });
 
@@ -612,6 +667,29 @@ function toggleAnalysis(button) {
 #fetchNewsBtn.rate-limited:hover {
   background: #ff9800;
   transform: none;
+}
+
+/* Add styles for error states */
+.card button.check.error {
+  background: #dc3545;
+  cursor: not-allowed;
+}
+
+.card button.check.error:hover {
+  background: #dc3545;
+  transform: none;
+  box-shadow: none;
+}
+
+.card button.check.rate-limited {
+  background: #ff9800;
+  cursor: not-allowed;
+}
+
+.card button.check.rate-limited:hover {
+  background: #ff9800;
+  transform: none;
+  box-shadow: none;
 }
 </style>
 </body>

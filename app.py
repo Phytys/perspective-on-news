@@ -15,6 +15,7 @@ from fetch_news import collect_news, NEWS_PER_SITE, NEWS_SUMMARY_LEN  # Import f
 from sqlalchemy import or_, func
 import logging
 import os
+from functools import wraps
 
 load_dotenv()
 app = Flask(__name__)
@@ -62,23 +63,73 @@ def internal_error(error):
 
 # Rate limiting - only in production
 if FLASK_ENV == 'production':
-    limiter = Limiter(
-        app=app,
-        key_func=get_remote_address,
-        default_limits=["200 per day", "50 per hour"],
-        storage_uri=os.getenv("REDIS_URL"),
-        storage_options={"ssl_cert_reqs": None}  # Disable SSL verification for Heroku Redis
-    )
+    try:
+        # Log Redis URL (without password) for debugging
+        redis_url = os.getenv("REDIS_URL", "")
+        if redis_url:
+            safe_url = redis_url.split("@")[-1] if "@" in redis_url else redis_url
+            print(f"Initializing rate limiter with Redis at {safe_url}")
+        
+        limiter = Limiter(
+            app=app,
+            key_func=get_remote_address,
+            default_limits=["200 per day", "50 per hour"],
+            storage_uri=os.getenv("REDIS_URL"),
+            storage_options={
+                "ssl_cert_reqs": None,  # Disable SSL verification for Heroku Redis
+                "socket_timeout": 5,    # Add timeout to prevent hanging
+                "socket_connect_timeout": 5
+            },
+            strategy="fixed-window",    # More reliable than the default
+            on_breach=lambda: print("Rate limit breached")  # Add logging
+        )
 
-    # Add rate limits to API endpoints
-    def rate_limit(limit):
-        return limiter.limit(limit)
+        # Add rate limits to API endpoints
+        def rate_limit(limit):
+            return limiter.limit(limit)
+            
+        print("Rate limiter initialized successfully")
+    except Exception as e:
+        print(f"Error initializing rate limiter: {str(e)}")
+        # Fallback to dummy decorator if Redis is not available
+        def rate_limit(limit):
+            def decorator(f):
+                @wraps(f)
+                def wrapped(*args, **kwargs):
+                    print(f"Rate limit {limit} would be applied here (Redis unavailable)")
+                    return f(*args, **kwargs)
+                return wrapped
+            return decorator
+        print("Using dummy rate limiter (no actual rate limiting)")
 else:
     # Dummy decorator for development
     def rate_limit(limit):
         def decorator(f):
-            return f
+            @wraps(f)
+            def wrapped(*args, **kwargs):
+                print(f"Rate limit {limit} would be applied here (development mode)")
+                return f(*args, **kwargs)
+            return wrapped
         return decorator
+
+# Add error handler for rate limit exceeded
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({
+        "error": "Rate limit exceeded",
+        "message": str(e.description),
+        "retry_after": getattr(e, "retry_after", None)
+    }), 429
+
+# Add error handler for Redis connection issues
+@app.errorhandler(500)
+def redis_error_handler(e):
+    if "Redis" in str(e):
+        return jsonify({
+            "error": "Service temporarily unavailable",
+            "message": "Please try again in a few minutes"
+        }), 503
+    return e
 
 init_db()
 
