@@ -526,6 +526,10 @@ document.addEventListener('click', async e => {
     btn.disabled = true;
     btn.classList.add('analyzing');
     btn.textContent = 'Analyserar...';
+    
+    // Add loading state to the card
+    const card = btn.closest('.card');
+    card.classList.add('loading');
   });
   
   try {
@@ -544,6 +548,8 @@ document.addEventListener('click', async e => {
       btn.textContent = j.message || 'För många förfrågningar, försök igen senare';
       btn.classList.remove('analyzing');
       btn.classList.add('rate-limited');
+      const card = btn.closest('.card');
+      card.classList.remove('loading');
       // Re-enable after retry_after seconds, or default to 5 minutes
       const retryAfter = j.retry_after || 300;
       setTimeout(() => {
@@ -559,6 +565,8 @@ document.addEventListener('click', async e => {
       btn.textContent = j.message || 'Tjänsten är tillfälligt otillgänglig';
       btn.classList.remove('analyzing');
       btn.classList.add('error');
+      const card = btn.closest('.card');
+      card.classList.remove('loading');
       // Re-enable after 30 seconds
       setTimeout(() => {
         btn.disabled = false;
@@ -572,6 +580,8 @@ document.addEventListener('click', async e => {
       btn.textContent = j.message || 'Ett fel uppstod';
       btn.classList.remove('analyzing');
       btn.classList.add('error');
+      const card = btn.closest('.card');
+      card.classList.remove('loading');
       // Re-enable after 5 seconds
       setTimeout(() => {
         btn.disabled = false;
@@ -585,6 +595,8 @@ document.addEventListener('click', async e => {
       btn.textContent = j.message || 'Ett fel uppstod';
       btn.classList.remove('analyzing');
       btn.classList.add('error');
+      const card = btn.closest('.card');
+      card.classList.remove('loading');
       // Re-enable after 5 seconds
       setTimeout(() => {
         btn.disabled = false;
@@ -594,10 +606,6 @@ document.addEventListener('click', async e => {
       return; 
     }
     
-    // Add loading animation to the card
-    const card = btn.closest('.card');
-    card.classList.add('loading');
-    
     // Reload after a short delay to show the loading animation
     setTimeout(() => location.reload(), 500);
     
@@ -606,6 +614,8 @@ document.addEventListener('click', async e => {
     btn.textContent = 'Ett fel uppstod';
     btn.classList.remove('analyzing');
     btn.classList.add('error');
+    const card = btn.closest('.card');
+    card.classList.remove('loading');
     // Re-enable after 5 seconds
     setTimeout(() => {
       btn.disabled = false;
@@ -679,6 +689,89 @@ function toggleAnalysis(button) {
 #fetchNewsBtn.rate-limited:hover {
   background: #ff9800;
   transform: none;
+}
+
+/* Update analysis button colors */
+.card button.check {
+  background: #ff9800;  /* Orange color for 'Få nyanserad bild' */
+  color: white;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.card button.check:hover {
+  background: #f57c00;  /* Darker orange on hover */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+/* Loading animation for analysis button */
+.card button.check.analyzing {
+  background: #ff9800;
+  cursor: wait;
+  padding-right: 2.5em;  /* Make room for the spinner */
+}
+
+.card button.check.analyzing::after {
+  content: '';
+  position: absolute;
+  right: 0.8em;
+  top: 50%;
+  width: 1em;
+  height: 1em;
+  margin-top: -0.5em;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Pulsing animation for the entire card during analysis */
+.card.loading {
+  animation: pulse 2s infinite;
+  position: relative;
+}
+
+.card.loading::before {
+  content: 'Analyserar...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 152, 0, 0.9);
+  color: white;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 1;
+  animation: fadeInOut 2s infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+}
+
+@keyframes fadeInOut {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.card button.toggle-analysis {
+  background: #ffb74d;  /* Brighter orange for 'Visa analys' */
+  color: white;
+}
+
+.card button.toggle-analysis:hover {
+  background: #ffa726;  /* Slightly darker on hover */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 183, 77, 0.3);
 }
 
 /* Add styles for error states */
