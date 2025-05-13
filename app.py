@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from models   import Session, Article, init_db
 from analysis import analyse_article
 from sources  import SITES           # ← dynamic registry
-from config   import MODELS, ADMIN_PASSWORD, FLASK_ENV, config  # Add config import
+from config   import MODELS, ADMIN_PASSWORD, FLASK_ENV, template_config  # Use template_config instead of config
 from fetch_news import collect_news, NEWS_PER_SITE, NEWS_SUMMARY_LEN  # Import fetch functions
 from sqlalchemy import or_, func
 import logging
@@ -135,7 +135,7 @@ init_db()
 
 # Rate limiting constants
 FETCH_COOLDOWN_MINUTES = 15  # Minimum minutes between fetches
-MAX_FETCHES_PER_DAY = 24     # Maximum fetches per day
+MAX_FETCHES_PER_DAY = 48     # Maximum fetches per day (increased from 24)
 
 # Add custom Jinja filter
 @app.template_filter('from_json')
@@ -170,10 +170,10 @@ def check_fetch_limits() -> tuple[bool, str]:
                 remaining = cooldown - (datetime.utcnow() - latest_fetch[0])
                 return False, f"Vänta {int(remaining.total_seconds() / 60)} minuter innan nästa uppdatering"
             
-            # Check daily limit
+            # Check daily limit - count distinct fetch operations instead of articles
             today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
             today_fetches = (
-                sess.query(func.count(Article.id))
+                sess.query(func.count(func.distinct(Article.fetched_at)))
                 .filter(Article.fetched_at >= today_start)
                 .scalar()
             )
@@ -214,7 +214,7 @@ def index_all():
     sess.close()
     return render_template("index.html",
         sites=SITES, current_site="all", articles=arts,
-        now=datetime.utcnow(), search_query=query, config=config)
+        now=datetime.utcnow(), search_query=query, config=template_config)
 
 # ---------- front page (single) --------------------------------------
 @app.route("/site/<site>")
@@ -250,7 +250,7 @@ def index_site(site: str):
     sess.close()
     return render_template("index.html",
         sites=SITES, current_site=site, articles=arts,
-        now=datetime.utcnow(), search_query=query, config=config)
+        now=datetime.utcnow(), search_query=query, config=template_config)
 
 # ---------- analyse one article --------------------------------------
 @app.route('/api/analyse', methods=['POST'])
