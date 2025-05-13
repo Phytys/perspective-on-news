@@ -172,11 +172,27 @@ def check_fetch_limits() -> tuple[bool, str]:
             
             # Check daily limit - count distinct fetch operations instead of articles
             today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-            today_fetches = (
-                sess.query(func.count(func.distinct(Article.fetched_at)))
+            
+            # Get all timestamps and round them in Python instead of SQL
+            raw_timestamps = (
+                sess.query(Article.fetched_at)
                 .filter(Article.fetched_at >= today_start)
-                .scalar()
+                .all()
             )
+            
+            # Round timestamps to seconds in Python
+            rounded_timestamps = set(
+                ts[0].replace(microsecond=0)
+                for ts in raw_timestamps
+            )
+            
+            # Debug: Print rounded timestamps
+            print("\nDEBUG: Fetch timestamps today (rounded to seconds):")
+            for ts in sorted(rounded_timestamps, reverse=True):
+                print(f"  {ts}")
+            
+            today_fetches = len(rounded_timestamps)
+            print(f"\nDEBUG: Found {today_fetches} distinct fetch operations today")
             
             if today_fetches >= MAX_FETCHES_PER_DAY:
                 return False, f"Maximalt antal uppdateringar ({MAX_FETCHES_PER_DAY}) för idag har nåtts"
