@@ -63,7 +63,15 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # Admin settings
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # Required for admin actions 
 
-# Export all config variables as a dict
+# Export only template-safe config variables
+template_config = {
+    "FLASK_ENV": FLASK_ENV,
+    "NEWS_PER_SITE": NEWS_PER_SITE,
+    "NEWS_SUMMARY_LEN": NEWS_SUMMARY_LEN,
+    "ANALYSE_LIMIT": ANALYSE_LIMIT
+}
+
+# Keep the full config for internal use
 config = {
     "FLASK_ENV": FLASK_ENV,
     "SECRET_KEY": SECRET_KEY,

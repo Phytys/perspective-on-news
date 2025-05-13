@@ -31,7 +31,7 @@
   <div class="update-news">
     <button id="fetchNewsBtn" class="check">Uppdatera nyhetsflödet</button>
     {% if config.FLASK_ENV == 'development' %}
-    <button id="resetAllBtn" class="check" style="background: #dc3545;">Rensa alla nyheter</button>
+    <button id="resetAllBtn" class="check" style="background: #dc3545;" onclick="resetAll()">Rensa alla nyheter</button>
     {% endif %}
   </div>
 </header>
@@ -465,14 +465,17 @@ document.getElementById('fetchNewsBtn').onclick = async () => {
 };
 
 // Add reset all button handler
-document.getElementById('resetAllBtn').onclick = async () => {
-  if (!confirm('Är du säker på att du vill ta bort alla nyheter?')) return;
+async function resetAll() {
+  const btn = document.getElementById('resetAllBtn');
+  if (!btn) return;  // Guard in case button is not present
   
-  const password = prompt('Ange administratörslösenord:');
+  // Prompt for password
+  const password = prompt('Ange admin-lösenord:');
   if (!password) return;
   
-  const btn = document.getElementById('resetAllBtn');
+  // Add loading state
   btn.disabled = true;
+  btn.classList.add('analyzing');
   btn.textContent = 'Rensar...';
   
   try {
@@ -488,19 +491,28 @@ document.getElementById('resetAllBtn').onclick = async () => {
       alert('Felaktigt lösenord');
       btn.textContent = 'Rensa alla nyheter';
       btn.disabled = false;
+      btn.classList.remove('analyzing');
       return;
     }
     
     if (!r.ok) {
-      btn.textContent = 'Ett fel uppstod';
+      alert('Ett fel uppstod');
+      btn.textContent = 'Rensa alla nyheter';
+      btn.disabled = false;
+      btn.classList.remove('analyzing');
       return;
     }
     
+    // Reload the page to show empty state
     location.reload();
+    
   } catch (error) {
-    btn.textContent = 'Ett fel uppstod';
+    alert('Ett fel uppstod');
+    btn.textContent = 'Rensa alla nyheter';
+    btn.disabled = false;
+    btn.classList.remove('analyzing');
   }
-};
+}
 
 document.addEventListener('click', async e => {
   if (!e.target.matches('button.check')) return;
